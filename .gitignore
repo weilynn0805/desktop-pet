@@ -1,0 +1,17 @@
+# 依赖（可由 npm install 还原，不入库）
+node_modules/
+
+# 运行期生成的本地配置（如宠物位置）
+# 注意：electron 的 userData 配置在系统目录，不在本项目内，这里仅作占位说明
+dist/
+out/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 系统/编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
