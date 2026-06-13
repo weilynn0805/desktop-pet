@@ -15,3 +15,8 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# 测试素材：只保留生成的小测试动画，忽略用户自带的大视频/图片
+测试素材/*
+!测试素材/test-pet.gif
+!测试素材/test-pet.png

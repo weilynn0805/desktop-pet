@@ -1,7 +1,9 @@
-// 主进程：创建透明悬浮宠物窗，处理拖动/位置持久化/右键菜单
-const { app, BrowserWindow, ipcMain, Menu, screen } = require('electron');
+// 主进程：创建透明悬浮宠物窗，处理拖动/位置持久化/素材/右键菜单
+const { app, BrowserWindow, ipcMain, Menu, dialog, screen } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const store = require('./store');
+const assets = require('./services/assets');
 
 const PET_SIZE = 200; // 宠物窗边长（含透明留白）
 let petWin = null;
@@ -24,11 +26,17 @@ function createPetWindow() {
       preload: path.join(__dirname, '../preload/pet-preload.js'),
       contextIsolation: true, // 渲染进程隔离，经 preload 暴露受控 API
       nodeIntegration: false,
+      // 仅加载本地素材、无任何联网内容；关闭同源限制以便对宠物做逐像素命中检测
+      webSecurity: false,
     },
   });
 
   win.setAlwaysOnTop(true, 'screen-saver'); // 提升到更高置顶层级
   win.loadFile(path.join(__dirname, '../renderer/pet/index.html'));
+
+  // 默认整窗鼠标穿透（forward:true 仍转发 mousemove，供渲染层判断指针是否在宠物上）。
+  // 只有指针落在宠物不透明像素上时，渲染层才请求临时关闭穿透。
+  win.setIgnoreMouseEvents(true, { forward: true });
 
   // 首次启动（无记忆位置）→ 放到主屏右下角
   if (!saved) {
@@ -62,9 +70,71 @@ ipcMain.on('pet:savePosition', () => {
   store.write({ petPosition: { x, y } });
 });
 
+// 渲染进程启动时获取当前素材（无则返回 null → 显示默认 CSS 宠物）
+ipcMain.handle('pet:getAsset', () => store.read().petAsset || null);
+
+// 渲染层根据指针是否在宠物上，开/关鼠标穿透
+ipcMain.on('pet:setInteractive', (_e, interactive) => {
+  petWin.setIgnoreMouseEvents(!interactive, { forward: true });
+});
+
+// 选择素材：弹文件对话框 → 复制进本地目录 → 持久化 → 通知渲染进程热更新
+function pickAsset() {
+  const result = dialog.showOpenDialogSync(petWin, {
+    title: '选择宠物素材',
+    properties: ['openFile'],
+    filters: [
+      { name: '宠物素材（图片/动图/视频）', extensions: assets.PICK_EXTENSIONS },
+      { name: '所有文件', extensions: ['*'] },
+    ],
+  });
+  if (!result || !result[0]) return; // 用户取消
+  const asset = assets.importAsset(result[0]);
+  if (!asset) {
+    dialog.showMessageBox(petWin, {
+      type: 'warning',
+      message: '不支持的素材格式',
+      detail: '支持：png/apng/gif/webp/jpg 与 mp4/webm/mov/m4v。',
+    });
+    return;
+  }
+
+  // 无 alpha 通道的格式（mp4/mov/jpg…）会带矩形背景，无法只显示主体 → 警告并让用户确认
+  if (!assets.supportsAlpha(asset.path)) {
+    const choice = dialog.showMessageBoxSync(petWin, {
+      type: 'warning',
+      buttons: ['仍然使用', '取消'],
+      defaultId: 1,
+      cancelId: 1,
+      message: '该格式无法透明显示',
+      detail:
+        '这个素材没有透明通道，会带矩形背景显示，无法只显示主体轮廓。\n\n' +
+        '想要“悬浮只显示主体”，请改用：\n' +
+        '· 透明 GIF / APNG / PNG（动图/图片，最常见、效果最好）\n' +
+        '· WebM（VP9 alpha）透明视频',
+    });
+    if (choice === 1) {
+      fs.unlinkSync(asset.path); // 用户取消 → 删除刚复制进来的文件，不留垃圾
+      return;
+    }
+  }
+
+  store.write({ petAsset: asset });
+  petWin.webContents.send('pet:assetChanged', asset);
+}
+
+// 恢复默认形象：清除素材配置 → 回到 CSS 宠物
+function resetAsset() {
+  store.write({ petAsset: null });
+  petWin.webContents.send('pet:assetChanged', null);
+}
+
 // 右键菜单（退出只走这里，避免误触）
 ipcMain.on('pet:showMenu', () => {
   const menu = Menu.buildFromTemplate([
+    { label: '选择素材...', click: pickAsset },
+    { label: '恢复默认形象', click: resetAsset },
+    { type: 'separator' },
     // 后续在此追加：打开控制面板 / 暂停宠物
     { label: '退出', click: () => app.quit() },
   ]);
