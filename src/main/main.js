@@ -1,5 +1,5 @@
 // 主进程：创建透明悬浮宠物窗，处理拖动/位置持久化/素材/右键菜单
-const { app, BrowserWindow, ipcMain, Menu, dialog, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, dialog, screen, powerMonitor } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const store = require('./store');
@@ -90,6 +90,7 @@ app.whenReady().then(() => {
   petWin = createPetWindow();
   petWin.webContents.once('did-finish-load', startRotation); // 窗口就绪后启动轮播定时器
   startReminderScheduler(); // 启动提醒到点检查
+  startFatigueTimer();      // 启动防沉迷连续使用计时
 });
 
 // 渲染进程在拖动开始时获取窗口当前位置（用于计算位移）
@@ -671,5 +672,56 @@ ipcMain.on('pet:showMenu', () => {
   ]);
   menu.popup({ window: petWin });
 });
+
+// ---- 防沉迷：连续使用计时（5'.1）----
+// 核心：每 5 秒一拍，用 powerMonitor 读“距上次键鼠输入的空闲秒数”。
+// 持续活跃则累加使用时长；空闲超过阈值（默认 10 分钟）视为已休息 → 计时清零。
+// 本步只做“计”与“显”，到点提醒/休息倒计时在后续步骤接线。
+function getFatigueCfg() {
+  const s = store.read();
+  const use = Number(s.fatigueUseMinutes);
+  const idle = Number(s.fatigueIdleMinutes);
+  const rest = Number(s.fatigueRestMinutes);
+  return {
+    enabled: s.fatigueEnabled !== false,                              // 默认开启
+    use: Number.isFinite(use) && use > 0 ? use : 90,                 // 连续使用多少分钟后提醒
+    idle: Number.isFinite(idle) && idle > 0 ? idle : 10,             // 空闲多少分钟重置计时
+    rest: Number.isFinite(rest) && rest > 0 ? rest : 5,              // 休息多少分钟后自动结束
+  };
+}
+let fatigueUseSeconds = 0;      // 当前连续使用累计秒数
+let fatigueTimer = null;
+let fatigueLastTick = Date.now();
+function sendFatigueStatus() {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.webContents.send('panel:fatigueStatus', {
+      usage: Math.round(fatigueUseSeconds),
+      idle: Math.round(powerMonitor.getSystemIdleTime()),
+      cfg: getFatigueCfg(),
+    });
+  }
+}
+function fatigueTick() {
+  const now = Date.now();
+  const elapsed = (now - fatigueLastTick) / 1000;
+  fatigueLastTick = now;
+  const cfg = getFatigueCfg();
+  if (!cfg.enabled) { fatigueUseSeconds = 0; sendFatigueStatus(); return; }
+  const idle = powerMonitor.getSystemIdleTime(); // 秒
+  if (idle >= cfg.idle * 60) fatigueUseSeconds = 0; // 长时间空闲 → 视为已休息，清零
+  else fatigueUseSeconds += elapsed;
+  sendFatigueStatus();
+}
+function startFatigueTimer() {
+  clearInterval(fatigueTimer);
+  fatigueLastTick = Date.now();
+  fatigueTimer = setInterval(fatigueTick, 5 * 1000);
+}
+// 面板打开时立即拿一次现状（推送每 5 秒一次，首屏不等）
+ipcMain.handle('fatigue:get', () => ({
+  usage: Math.round(fatigueUseSeconds),
+  idle: Math.round(powerMonitor.getSystemIdleTime()),
+  cfg: getFatigueCfg(),
+}));
 
 app.on('window-all-closed', () => app.quit());

@@ -436,3 +436,19 @@ document.getElementById('rid-clear').addEventListener('click', async () => {
 resetForm(); // 初始化表单（预填时分/星期、按默认重复显示对应时间字段）
 window.panelAPI.getReminders().then(renderReminders);
 window.panelAPI.onRemindersChanged(renderReminders); // 到点触发后（单次变停用、重复推进到下次）同步列表
+
+// ---- 防沉迷：连续使用计时实时读数（5'.1）----
+const fatigueStatusEl = document.getElementById('fatigue-status');
+function fmtDur(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return m > 0 ? `${m} 分 ${s} 秒` : `${s} 秒`;
+}
+function renderFatigue(st) {
+  if (!st || !st.cfg) return;
+  if (!st.cfg.enabled) { fatigueStatusEl.textContent = '防沉迷计时：已关闭'; return; }
+  fatigueStatusEl.textContent =
+    `已连续使用 ${fmtDur(st.usage)} · 当前空闲 ${st.idle} 秒（空闲满 ${st.cfg.idle} 分钟自动清零；满 ${st.cfg.use} 分钟将提醒休息）`;
+}
+window.panelAPI.getFatigue().then(renderFatigue);     // 首屏立即拿一次
+window.panelAPI.onFatigueStatus(renderFatigue);       // 之后每 5 秒推送刷新

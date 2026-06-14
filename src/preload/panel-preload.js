@@ -27,6 +27,9 @@ contextBridge.exposeInMainWorld('panelAPI', {
   setReminderName: (name) => ipcRenderer.send('reminderidentity:setName', name),
   pickReminderAvatar: () => ipcRenderer.invoke('reminderavatar:pick'),
   clearReminderAvatar: () => ipcRenderer.invoke('reminderavatar:clear'),
+  // 防沉迷：读取当前计时现状 + 监听实时状态推送（usage/idle/cfg）
+  getFatigue: () => ipcRenderer.invoke('fatigue:get'),
+  onFatigueStatus: (cb) => ipcRenderer.on('panel:fatigueStatus', (_e, s) => cb(s)),
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),
