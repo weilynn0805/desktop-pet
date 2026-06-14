@@ -119,3 +119,16 @@ body.paused .pet .media { animation: none !important; }
   60% { transform: rotate(-6deg); }
   80% { transform: rotate(5deg); }
 }
+
+/* 提醒到点：连蹦几下引起注意（用 !important 盖过暂停态的 animation:none）*/
+.pet.remind .body, .pet.remind .media { animation: remind 1.4s ease !important; }
+body.paused .pet.remind { opacity: 1; } /* 提醒时即使暂停也恢复不透明，确保看得见 */
+@keyframes remind {
+  0%, 100% { transform: translateY(0); }
+  10% { transform: translateY(-16px); }
+  22% { transform: translateY(0); }
+  34% { transform: translateY(-12px); }
+  46% { transform: translateY(0); }
+  58% { transform: translateY(-7px); }
+  70% { transform: translateY(0); }
+}

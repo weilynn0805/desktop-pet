@@ -31,4 +31,6 @@ contextBridge.exposeInMainWorld('petAPI', {
   // 被戳台词：读取 + 监听变更
   getReactions: () => ipcRenderer.invoke('reactions:get'),
   onReactionsChanged: (cb) => ipcRenderer.on('pet:reactionsChanged', (_e, list) => cb(list)),
+  // 提醒到点：主进程通知宠物蹦一下引起注意
+  onRemind: (cb) => ipcRenderer.on('pet:remind', () => cb()),
 });

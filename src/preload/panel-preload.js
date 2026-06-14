@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('panelAPI', {
   addReminder: (data) => ipcRenderer.invoke('reminders:add', data),
   updateReminder: (id, data) => ipcRenderer.invoke('reminders:update', { id, data }),
   removeReminder: (id) => ipcRenderer.invoke('reminders:remove', id),
+  onRemindersChanged: (cb) => ipcRenderer.on('panel:remindersChanged', (_e, list) => cb(list)), // 到点触发后刷新
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),

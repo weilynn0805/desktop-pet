@@ -88,6 +88,7 @@ function openSettings() {
 app.whenReady().then(() => {
   petWin = createPetWindow();
   petWin.webContents.once('did-finish-load', startRotation); // 窗口就绪后启动轮播定时器
+  startReminderScheduler(); // 启动提醒到点检查
 });
 
 // 渲染进程在拖动开始时获取窗口当前位置（用于计算位移）
@@ -240,11 +241,13 @@ ipcMain.on('paused:set', (_e, on) => setPaused(on));
 // 双击宠物 → 打开设置面板（与右键菜单同一入口）
 ipcMain.on('pet:openPanel', () => openSettings());
 
-// 渲染进程启动时获取当前应显示的素材（无则返回 null → 显示默认 CSS 宠物）
-ipcMain.handle('pet:getAsset', () => {
+// 当前应显示的素材（无则 null → 默认 CSS 宠物）
+function getCurrentAsset() {
   const list = getAssets();
   return list.length ? list[Math.min(rotateIndex, list.length - 1)] : null;
-});
+}
+// 渲染进程启动时获取当前应显示的素材
+ipcMain.handle('pet:getAsset', () => getCurrentAsset());
 
 // 渲染层根据指针是否在宠物上，开/关鼠标穿透
 ipcMain.on('pet:setInteractive', (_e, interactive) => {
@@ -422,6 +425,161 @@ ipcMain.handle('reminders:update', (_e, { id, data }) => {
 ipcMain.handle('reminders:remove', (_e, id) => {
   return saveReminders(getReminders().filter((r) => r.id !== id));
 });
+
+// ---- 到点触发 + 提醒弹窗（白底黑字、可堆叠、不点不消失）----
+const pad2 = (n) => String(n).padStart(2, '0');
+// 'YYYY-MM-DDTHH:mm'（本地时间）→ Date；非法返回 null
+function parseLocal(dt) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(dt || '');
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0, 0) : null;
+}
+function toLocalString(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+// 从 date 出发，按 repeat 规则推进到“严格晚于现在”的下一次（保留原时分）
+function nextOccurrence(date, repeat) {
+  const d = new Date(date.getTime());
+  const now = Date.now();
+  const step = () => {
+    if (repeat === 'daily') d.setDate(d.getDate() + 1);
+    else if (repeat === 'weekly') d.setDate(d.getDate() + 7);
+    else { // workday：跳到下一个工作日（周一~周五）
+      do { d.setDate(d.getDate() + 1); } while (d.getDay() === 0 || d.getDay() === 6);
+    }
+  };
+  let guard = 0;
+  do { step(); } while (d.getTime() <= now && ++guard < 4000);
+  return d;
+}
+
+let reminderWin = null;
+let reminderTimer = null;
+let pendingReminders = []; // 已触发未确认 [{id, text, datetime, repeat}]
+
+// 让弹窗贴着宠物本体出现（优先左侧，放不下转右侧），像宠物凑过来提醒你
+function positionReminder() {
+  if (!reminderWin || reminderWin.isDestroyed()) return;
+  const { workArea } = screen.getPrimaryDisplay();
+  const [w, h] = reminderWin.getSize();
+  let x, y;
+  if (petWin && !petWin.isDestroyed()) {
+    const [px, py] = petWin.getPosition();
+    const petLeft = px + MARGIN;                 // 宠物本体左边（扣掉透明留白）
+    const petRight = px + MARGIN + PET_SIZE;
+    const petCenterY = py + WIN_SIZE / 2;
+    x = petLeft - w - 12;                         // 先放宠物左侧
+    if (x < workArea.x + 8) x = petRight + 12;    // 左侧不够 → 放右侧
+    y = petCenterY - h / 2;                       // 垂直对齐宠物中线
+  } else {
+    x = workArea.x + workArea.width - w - 24;
+    y = workArea.y + workArea.height - h - 24;
+  }
+  // 夹到工作区内，避免越界看不见
+  x = Math.min(Math.max(x, workArea.x + 8), workArea.x + workArea.width - w - 8);
+  y = Math.min(Math.max(y, workArea.y + 8), workArea.y + workArea.height - h - 8);
+  reminderWin.setPosition(Math.round(x), Math.round(y));
+}
+
+// 把宠物当前形象推给弹窗（让宠物“出现在”提醒里）
+function sendReminderPet() {
+  if (reminderWin && !reminderWin.isDestroyed()) {
+    reminderWin.webContents.send('reminder:pet', getCurrentAsset());
+  }
+}
+
+function createReminderWindow() {
+  reminderWin = new BrowserWindow({
+    width: 340,
+    height: 160,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: true,
+    skipTaskbar: false, // 任务栏可见，便于找回
+    show: false,
+    title: '提醒',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/reminder-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  reminderWin.setAlwaysOnTop(true, 'screen-saver');
+  reminderWin.setMenuBarVisibility(false);
+  reminderWin.loadFile(path.join(__dirname, '../renderer/reminder/index.html'));
+  reminderWin.on('closed', () => { reminderWin = null; });
+}
+
+// 触发一组提醒：合入待确认列表 → 弹窗（已开则追加）
+function pushReminderPopup(items) {
+  if (!items || !items.length) return;
+  pendingReminders.push(...items);
+  if (!reminderWin || reminderWin.isDestroyed()) {
+    createReminderWindow();
+    reminderWin.webContents.once('did-finish-load', () => {
+      sendReminderPet();
+      reminderWin.webContents.send('reminder:list', pendingReminders);
+      positionReminder();
+      reminderWin.show();
+    });
+  } else {
+    sendReminderPet();
+    reminderWin.webContents.send('reminder:list', pendingReminders);
+    positionReminder();
+    reminderWin.show();
+  }
+}
+
+// 渲染层报告内容高度 → 自适应窗口高度并重新贴右下角
+ipcMain.on('reminder:resize', (_e, h) => {
+  if (!reminderWin || reminderWin.isDestroyed()) return;
+  const [w] = reminderWin.getSize();
+  reminderWin.setSize(w, Math.min(560, Math.max(120, Math.round(h))));
+  positionReminder();
+});
+
+// 确认某条：移出待确认；空了则关窗，否则刷新
+ipcMain.on('reminder:ack', (_e, id) => {
+  pendingReminders = pendingReminders.filter((r) => r.id !== id);
+  if (!pendingReminders.length) {
+    if (reminderWin && !reminderWin.isDestroyed()) reminderWin.close();
+  } else if (reminderWin && !reminderWin.isDestroyed()) {
+    reminderWin.webContents.send('reminder:list', pendingReminders);
+  }
+});
+
+// 检查到点提醒：触发后单次停用、重复推进到下次；写库并通知面板刷新
+function checkReminders() {
+  const now = Date.now();
+  const list = getReminders();
+  const toFire = [];
+  let changed = false;
+  for (const r of list) {
+    if (r.enabled === false) continue;
+    const d = parseLocal(r.datetime);
+    if (!d || d.getTime() > now) continue;
+    if (pendingReminders.some((p) => p.id === r.id)) continue; // 已在弹窗里
+    toFire.push({ id: r.id, text: r.text, datetime: r.datetime, repeat: r.repeat });
+    if (r.repeat === 'single') r.enabled = false;
+    else r.datetime = toLocalString(nextOccurrence(d, r.repeat));
+    changed = true;
+  }
+  if (changed) {
+    saveReminders(list);
+    if (settingsWin && !settingsWin.isDestroyed()) {
+      settingsWin.webContents.send('panel:remindersChanged', getReminders());
+    }
+  }
+  if (toFire.length) {
+    if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:remind'); // 宠物蹦一下引起注意
+    pushReminderPopup(toFire);
+  }
+}
+
+function startReminderScheduler() {
+  clearInterval(reminderTimer);
+  checkReminders(); // 启动即查一次，捕捉关闭期间错过的
+  reminderTimer = setInterval(checkReminders, 20 * 1000);
+}
 ipcMain.handle('rotate:get', () => ({ minutes: getRotateMinutes() }));
 ipcMain.on('rotate:set', (_e, minutes) => {
   let m = Math.round(Number(minutes));

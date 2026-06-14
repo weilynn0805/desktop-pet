@@ -316,3 +316,13 @@ function poke() {
   moveTimer = setTimeout(() => pet.classList.remove(move), 600); // 动画结束后复位
   showReaction();
 }
+
+// 提醒到点：宠物连蹦几下引起注意（暂停态也照常，提醒优先级更高）
+let remindTimer = null;
+window.petAPI.onRemind(() => {
+  pet.classList.remove('remind');
+  void pet.offsetWidth; // 重置动画
+  pet.classList.add('remind');
+  clearTimeout(remindTimer);
+  remindTimer = setTimeout(() => pet.classList.remove('remind'), 1400);
+});

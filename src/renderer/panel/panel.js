@@ -299,3 +299,4 @@ remSave.addEventListener('click', async () => {
 remCancel.addEventListener('click', resetForm);
 
 window.panelAPI.getReminders().then(renderReminders);
+window.panelAPI.onRemindersChanged(renderReminders); // 到点触发后（单次变停用、重复推进到下次）同步列表
