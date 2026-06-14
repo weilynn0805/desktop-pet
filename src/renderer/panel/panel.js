@@ -181,7 +181,6 @@ document.getElementById('reset-scale').addEventListener('click', async () => {
 document.getElementById('quit-app').addEventListener('click', () => window.panelAPI.quitApp());
 
 // ---- 事项提醒：增删改查 ----
-const REPEAT_LABEL = { single: '单次', daily: '每天', weekly: '每周', workday: '工作日' };
 const remList = document.getElementById('reminder-list');
 const remTime = document.getElementById('rem-time');
 const remText = document.getElementById('rem-text');
@@ -195,6 +194,11 @@ const remTest = document.getElementById('rem-test');
 const remSoundCustom = document.getElementById('rem-sound-custom');
 const remPickSound = document.getElementById('rem-pick-sound');
 const remSoundName = document.getElementById('rem-sound-name');
+const remWeekday = document.getElementById('rem-weekday');
+const remClock = document.getElementById('rem-clock');
+const fieldDatetime = document.getElementById('field-datetime');
+const fieldWeekday = document.getElementById('field-weekday');
+const fieldClock = document.getElementById('field-clock');
 let editingId = null;       // 正在编辑的提醒 id（null = 新增模式）
 let customSound = null;     // 自定义提示音 {path,name}（仅 sound=custom 时有效）
 
@@ -203,11 +207,49 @@ function syncSoundUI() {
   remSoundCustom.style.display = remSound.value === 'custom' ? '' : 'none';
 }
 
+// 时间字段随“重复”自适应：单次=完整日期时间；每天/工作日=只时分；每周=星期+时分
+function syncTimeUI() {
+  const r = remRepeat.value;
+  fieldDatetime.style.display = r === 'single' ? '' : 'none';
+  fieldWeekday.style.display = r === 'weekly' ? '' : 'none';
+  fieldClock.style.display = r === 'single' ? 'none' : '';
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const toLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+const clockOf = (dt) => (dt || '').split('T')[1] || ''; // 'HH:mm'
+const weekdayOf = (dt) => { const d = new Date(dt); return Number.isNaN(d.getTime()) ? 1 : d.getDay(); };
+
+// 由“重复 + 时分(+星期)”算出首个将来触发时间（避免开局就误触发）
+function computeDatetime(repeat, clock, weekday) {
+  const [hh, mm] = clock.split(':').map(Number);
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  if (repeat === 'daily') {
+    if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
+  } else if (repeat === 'workday') {
+    while (d.getTime() <= now.getTime() || d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  } else if (repeat === 'weekly') {
+    while (d.getDay() !== weekday || d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
+  }
+  return toLocal(d);
+}
+
 // 'YYYY-MM-DDTHH:mm' → 易读展示
 function fmtTime(dt) {
   if (!dt) return '(未设时间)';
   const [d, t] = dt.split('T');
   return `${(d || '').replace(/-/g, '/')} ${t || ''}`.trim();
+}
+
+// 列表里的时间描述：重复类显示规则+时分，单次显示完整日期
+const WD = ['日', '一', '二', '三', '四', '五', '六'];
+function whenLabel(r) {
+  const clock = clockOf(r.datetime);
+  if (r.repeat === 'daily') return `每天 ${clock}`;
+  if (r.repeat === 'workday') return `工作日 ${clock}`;
+  if (r.repeat === 'weekly') return `每周${WD[weekdayOf(r.datetime)]} ${clock}`;
+  return `${fmtTime(r.datetime)} · 单次`;
 }
 
 function renderReminders(list) {
@@ -231,7 +273,7 @@ function renderReminders(list) {
     const sub = document.createElement('div');
     sub.className = 'muted';
     const soundLabel = (window.SOUND_LABELS && window.SOUND_LABELS[r.sound]) || '叮';
-    sub.textContent = `${fmtTime(r.datetime)} · ${REPEAT_LABEL[r.repeat] || '单次'} · 🔔${soundLabel}${r.enabled ? '' : ' · 已停用'}`;
+    sub.textContent = `${whenLabel(r)} · 🔔${soundLabel}${r.enabled ? '' : ' · 已停用'}`;
     info.appendChild(top);
     info.appendChild(sub);
 
@@ -265,13 +307,19 @@ function renderReminders(list) {
 
 function startEdit(r) {
   editingId = r.id;
-  remTime.value = r.datetime || '';
   remText.value = r.text || '';
   remRepeat.value = r.repeat || 'single';
+  if (r.repeat === 'single') {
+    remTime.value = r.datetime || '';
+  } else {
+    remClock.value = clockOf(r.datetime);          // 重复类：回填时分
+    if (r.repeat === 'weekly') remWeekday.value = String(weekdayOf(r.datetime)); // 每周：回填星期
+  }
   remSound.value = r.sound || 'ding';
   customSound = r.sound === 'custom' && r.soundSrc ? { path: r.soundSrc, name: '（已选择）' } : null;
   remSoundName.textContent = customSound ? customSound.name : '未选择';
   syncSoundUI();
+  syncTimeUI();
   remFormTitle.textContent = '编辑提醒';
   remSave.textContent = '保存修改';
   remCancel.style.display = '';
@@ -283,10 +331,14 @@ function resetForm() {
   remTime.value = '';
   remText.value = '';
   remRepeat.value = 'single';
+  const now = new Date();
+  remClock.value = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`; // 预填当前时分
+  remWeekday.value = String(now.getDay());
   remSound.value = 'ding';
   customSound = null;
   remSoundName.textContent = '未选择';
   syncSoundUI();
+  syncTimeUI();
   remFormTitle.textContent = '添加提醒';
   remSave.textContent = '保存提醒';
   remCancel.style.display = 'none';
@@ -299,13 +351,18 @@ function flashStatus(msg) {
 
 remSave.addEventListener('click', async () => {
   const text = remText.value.trim();
-  const datetime = remTime.value;
   const repeat = remRepeat.value;
   if (!text) { flashStatus('请填写提醒文案'); return; }
-  if (!datetime) { flashStatus('请选择时间'); return; }
-  // 单次提醒禁止选过去时间（重复类允许过去时间，会按规则推算下次）
-  if (repeat === 'single' && new Date(datetime).getTime() <= Date.now()) {
-    flashStatus('单次提醒不能设在过去时间'); return;
+
+  // 单次用完整日期时间且须为将来；重复类用时分(+星期)算出首个将来触发时间
+  let datetime;
+  if (repeat === 'single') {
+    datetime = remTime.value;
+    if (!datetime) { flashStatus('请选择时间'); return; }
+    if (new Date(datetime).getTime() <= Date.now()) { flashStatus('单次提醒不能设在过去时间'); return; }
+  } else {
+    if (!remClock.value) { flashStatus('请选择时间'); return; }
+    datetime = computeDatetime(repeat, remClock.value, Number(remWeekday.value));
   }
   const sound = remSound.value;
   if (sound === 'custom' && !(customSound && customSound.path)) {
@@ -321,6 +378,7 @@ remSave.addEventListener('click', async () => {
 });
 
 remCancel.addEventListener('click', resetForm);
+remRepeat.addEventListener('change', syncTimeUI); // 切换重复 → 时间字段自适应
 
 // 提示音：切换显隐自定义行；选文件；试听
 remSound.addEventListener('change', syncSoundUI);
@@ -375,5 +433,6 @@ document.getElementById('rid-clear').addEventListener('click', async () => {
   flashRid('已恢复跟随当前形象');
 });
 
+resetForm(); // 初始化表单（预填时分/星期、按默认重复显示对应时间字段）
 window.panelAPI.getReminders().then(renderReminders);
 window.panelAPI.onRemindersChanged(renderReminders); // 到点触发后（单次变停用、重复推进到下次）同步列表

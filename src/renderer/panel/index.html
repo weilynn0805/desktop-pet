@@ -98,10 +98,6 @@
       <hr class="sep" />
       <h3 class="subhead" id="reminder-form-title">添加提醒</h3>
       <div class="field">
-        <label class="muted">时间</label>
-        <input type="datetime-local" id="rem-time" class="input" />
-      </div>
-      <div class="field">
         <label class="muted">文案（≤50 字）</label>
         <input type="text" id="rem-text" class="input" maxlength="50" placeholder="例如：起来喝口水 / 10 点开会" />
       </div>
@@ -113,6 +109,29 @@
           <option value="weekly">每周</option>
           <option value="workday">工作日</option>
         </select>
+      </div>
+      <!-- 单次：完整日期 + 时间 -->
+      <div class="field" id="field-datetime">
+        <label class="muted">时间</label>
+        <input type="datetime-local" id="rem-time" class="input" />
+      </div>
+      <!-- 每周：选星期 -->
+      <div class="field" id="field-weekday" style="display:none;">
+        <label class="muted">星期</label>
+        <select id="rem-weekday" class="input">
+          <option value="1">周一</option>
+          <option value="2">周二</option>
+          <option value="3">周三</option>
+          <option value="4">周四</option>
+          <option value="5">周五</option>
+          <option value="6">周六</option>
+          <option value="0">周日</option>
+        </select>
+      </div>
+      <!-- 每天 / 每周 / 工作日：只选时分 -->
+      <div class="field" id="field-clock" style="display:none;">
+        <label class="muted">时间</label>
+        <input type="time" id="rem-clock" class="input" />
       </div>
       <div class="field">
         <label class="muted">提示音</label>
