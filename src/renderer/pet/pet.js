@@ -133,6 +133,8 @@ const bubble = document.getElementById('bubble');
 let PHRASES = []; // 从配置加载，可在设置面板编辑后热更新
 window.petAPI.getPhrases().then((list) => { PHRASES = list; });
 window.petAPI.onPhrasesChanged((list) => { PHRASES = list; });
+
+let autoHideTimer = null; // 定时主动冒泡的自动收起计时器
 // 扫描图片最顶端不透明像素，返回其占图高的比例（0=顶,1=底）。按 src 缓存。
 let opaqueTopCache = { src: null, ratio: 0 };
 function imageOpaqueTopRatio(img) {
@@ -186,7 +188,12 @@ function setInteractive(on) {
   if (on === interactive) return; // 状态没变就不打扰主进程
   interactive = on;
   window.petAPI.setInteractive(on);
-  if (on) showBubble(); else hideBubble(); // 进入宠物→说句话，离开→收起
+  if (on) {
+    clearTimeout(autoHideTimer); // 悬停接管 → 取消定时气泡的自动收起
+    showBubble();                // 进入宠物 → 说句话
+  } else {
+    hideBubble();                // 离开 → 收起
+  }
 }
 
 window.addEventListener('mousemove', (e) => {
@@ -211,6 +218,17 @@ window.addEventListener('wheel', (e) => {
   applyScale(e.deltaY < 0 ? scale * 1.1 : scale / 1.1);
   window.petAPI.setScale(scale);                   // 持久化
 }, { passive: false });
+
+// ---- 定时主动冒泡：宠物隔一会儿自己说句话，显示几秒后自动收起 ----
+const AUTO_INTERVAL = 25000; // 每隔多久冒一次(ms)
+const AUTO_VISIBLE = 4000;   // 每次显示时长(ms)
+function autoBubble() {
+  if (dragging || interactive) return; // 正在拖动/悬停 → 不打扰，让位给悬停气泡
+  showBubble();
+  clearTimeout(autoHideTimer);
+  autoHideTimer = setTimeout(hideBubble, AUTO_VISIBLE);
+}
+setInterval(autoBubble, AUTO_INTERVAL);
 
 // 单击反应：触发一次挤压动画
 function poke() {
