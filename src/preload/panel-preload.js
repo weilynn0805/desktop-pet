@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 定时主动冒泡配置：读取 + 保存
   getAutoBubble: () => ipcRenderer.invoke('autobubble:get'),
   setAutoBubble: (cfg) => ipcRenderer.send('autobubble:set', cfg),
+  // 事项提醒：列表 / 增 / 改 / 删
+  getReminders: () => ipcRenderer.invoke('reminders:list'),
+  addReminder: (data) => ipcRenderer.invoke('reminders:add', data),
+  updateReminder: (id, data) => ipcRenderer.invoke('reminders:update', { id, data }),
+  removeReminder: (id) => ipcRenderer.invoke('reminders:remove', id),
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),

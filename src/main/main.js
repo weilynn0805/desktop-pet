@@ -386,6 +386,42 @@ ipcMain.handle('assets:add', () => addAssets(settingsWin));
 ipcMain.handle('assets:remove', (_e, index) => removeAsset(index));
 ipcMain.handle('assets:next', () => rotateNext());
 ipcMain.on('assets:setCaption', (_e, { index, caption }) => setAssetCaption(index, caption));
+
+// ---- 事项提醒（数据模型 + CRUD；到点触发在 5.2 实现）----
+const REPEATS = ['single', 'daily', 'weekly', 'workday'];
+function getReminders() {
+  const r = store.read().reminders;
+  return Array.isArray(r) ? r : [];
+}
+// 清洗一条提醒：文案≤50、时间字符串、重复枚举、启用布尔
+function sanitizeReminder(d) {
+  return {
+    text: String((d && d.text) || '').trim().slice(0, 50),
+    datetime: String((d && d.datetime) || ''), // 'YYYY-MM-DDTHH:mm'（datetime-local）
+    repeat: REPEATS.includes(d && d.repeat) ? d.repeat : 'single',
+    enabled: d && d.enabled !== false, // 默认启用
+  };
+}
+function saveReminders(list) {
+  store.write({ reminders: list });
+  return list;
+}
+ipcMain.handle('reminders:list', () => getReminders());
+ipcMain.handle('reminders:add', (_e, data) => {
+  const list = getReminders();
+  const item = { id: `r-${Date.now()}-${Math.floor(Math.random() * 1e4)}`, ...sanitizeReminder(data) };
+  list.push(item);
+  return saveReminders(list);
+});
+ipcMain.handle('reminders:update', (_e, { id, data }) => {
+  const list = getReminders();
+  const i = list.findIndex((r) => r.id === id);
+  if (i >= 0) list[i] = { ...list[i], ...sanitizeReminder({ ...list[i], ...data }) };
+  return saveReminders(list);
+});
+ipcMain.handle('reminders:remove', (_e, id) => {
+  return saveReminders(getReminders().filter((r) => r.id !== id));
+});
 ipcMain.handle('rotate:get', () => ({ minutes: getRotateMinutes() }));
 ipcMain.on('rotate:set', (_e, minutes) => {
   let m = Math.round(Number(minutes));

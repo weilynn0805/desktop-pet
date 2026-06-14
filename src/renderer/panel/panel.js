@@ -179,3 +179,123 @@ document.getElementById('reset-scale').addEventListener('click', async () => {
 
 // 行为 · 退出应用
 document.getElementById('quit-app').addEventListener('click', () => window.panelAPI.quitApp());
+
+// ---- 事项提醒：增删改查 ----
+const REPEAT_LABEL = { single: '单次', daily: '每天', weekly: '每周', workday: '工作日' };
+const remList = document.getElementById('reminder-list');
+const remTime = document.getElementById('rem-time');
+const remText = document.getElementById('rem-text');
+const remRepeat = document.getElementById('rem-repeat');
+const remSave = document.getElementById('rem-save');
+const remCancel = document.getElementById('rem-cancel');
+const remStatus = document.getElementById('rem-status');
+const remFormTitle = document.getElementById('reminder-form-title');
+let editingId = null; // 正在编辑的提醒 id（null = 新增模式）
+
+// 'YYYY-MM-DDTHH:mm' → 易读展示
+function fmtTime(dt) {
+  if (!dt) return '(未设时间)';
+  const [d, t] = dt.split('T');
+  return `${(d || '').replace(/-/g, '/')} ${t || ''}`.trim();
+}
+
+function renderReminders(list) {
+  remList.innerHTML = '';
+  if (!list.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = '（还没有提醒，下面添加一条吧）';
+    remList.appendChild(empty);
+    return;
+  }
+  list.forEach((r) => {
+    const item = document.createElement('div');
+    item.className = 'reminder-item' + (r.enabled ? '' : ' off');
+
+    const info = document.createElement('div');
+    info.className = 'rem-info';
+    const top = document.createElement('div');
+    top.className = 'rem-text';
+    top.textContent = r.text || '(无文案)';
+    const sub = document.createElement('div');
+    sub.className = 'muted';
+    sub.textContent = `${fmtTime(r.datetime)} · ${REPEAT_LABEL[r.repeat] || '单次'}${r.enabled ? '' : ' · 已停用'}`;
+    info.appendChild(top);
+    info.appendChild(sub);
+
+    const toggle = document.createElement('button');
+    toggle.className = 'btn btn-ghost';
+    toggle.textContent = r.enabled ? '停用' : '启用';
+    toggle.addEventListener('click', async () => {
+      renderReminders(await window.panelAPI.updateReminder(r.id, { enabled: !r.enabled }));
+    });
+
+    const edit = document.createElement('button');
+    edit.className = 'btn btn-ghost';
+    edit.textContent = '编辑';
+    edit.addEventListener('click', () => startEdit(r));
+
+    const del = document.createElement('button');
+    del.className = 'btn btn-ghost';
+    del.textContent = '删除';
+    del.addEventListener('click', async () => {
+      if (editingId === r.id) resetForm();
+      renderReminders(await window.panelAPI.removeReminder(r.id));
+    });
+
+    item.appendChild(info);
+    item.appendChild(toggle);
+    item.appendChild(edit);
+    item.appendChild(del);
+    remList.appendChild(item);
+  });
+}
+
+function startEdit(r) {
+  editingId = r.id;
+  remTime.value = r.datetime || '';
+  remText.value = r.text || '';
+  remRepeat.value = r.repeat || 'single';
+  remFormTitle.textContent = '编辑提醒';
+  remSave.textContent = '保存修改';
+  remCancel.style.display = '';
+  remText.focus();
+}
+
+function resetForm() {
+  editingId = null;
+  remTime.value = '';
+  remText.value = '';
+  remRepeat.value = 'single';
+  remFormTitle.textContent = '添加提醒';
+  remSave.textContent = '保存提醒';
+  remCancel.style.display = 'none';
+}
+
+function flashStatus(msg) {
+  remStatus.textContent = msg;
+  setTimeout(() => { remStatus.textContent = ''; }, 2200);
+}
+
+remSave.addEventListener('click', async () => {
+  const text = remText.value.trim();
+  const datetime = remTime.value;
+  const repeat = remRepeat.value;
+  if (!text) { flashStatus('请填写提醒文案'); return; }
+  if (!datetime) { flashStatus('请选择时间'); return; }
+  // 单次提醒禁止选过去时间（重复类允许过去时间，会按规则推算下次）
+  if (repeat === 'single' && new Date(datetime).getTime() <= Date.now()) {
+    flashStatus('单次提醒不能设在过去时间'); return;
+  }
+  const data = { text, datetime, repeat };
+  const list = editingId
+    ? await window.panelAPI.updateReminder(editingId, data)
+    : await window.panelAPI.addReminder(data);
+  resetForm();
+  renderReminders(list);
+  flashStatus('已保存');
+});
+
+remCancel.addEventListener('click', resetForm);
+
+window.panelAPI.getReminders().then(renderReminders);

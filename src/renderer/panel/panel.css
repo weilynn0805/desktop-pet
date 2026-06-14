@@ -130,6 +130,46 @@ html, body {
 }
 .num:focus { border-color: #7c84ff; }
 
+/* 表单输入（事项提醒等） */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.field > label { flex: 0 0 84px; }
+.input {
+  flex: 1;
+  padding: 6px 9px;
+  border: 1px solid #d6d9dd;
+  border-radius: 8px;
+  font: 13px "Microsoft YaHei", system-ui, sans-serif;
+  color: #2b2d31;
+  outline: none;
+  background: #fff;
+}
+.input:focus { border-color: #7c84ff; }
+
+/* 提醒列表 */
+.reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.reminder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+}
+.reminder-item.off { opacity: .55; }
+.rem-info { flex: 1; min-width: 0; }
+.rem-text { font-size: 13px; font-weight: 600; word-break: break-all; }
+.reminder-item .btn { padding: 4px 10px; }
+
 /* 形象与素材 */
 .asset {
   display: flex;

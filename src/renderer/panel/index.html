@@ -70,17 +70,36 @@
       </div>
     </section>
 
-    <!-- 事项提醒（骨架，v1.1 填充）-->
-    <section class="card card-soon">
-      <h2>事项提醒 <span class="badge">v1.1 开发中</span></h2>
-      <p class="muted">到设定时间，宠物切换提醒形象并弹出提醒面板（白底黑字 + “我知道了”，不点不消失）。</p>
-      <ul class="soon-list">
-        <li>提醒列表：新增 / 编辑 / 删除，可堆叠逐条确认</li>
-        <li>时间选择：年-月-日-时-分，重复规则（单次 / 每天 / 每周 / 工作日）</li>
-        <li>提醒文案（≤50 字）+ 提示音（内置或自定义）</li>
-        <li>专属提醒素材</li>
-      </ul>
-      <button class="btn" disabled>添加提醒…（敬请期待）</button>
+    <!-- 事项提醒 -->
+    <section class="card">
+      <h2>事项提醒</h2>
+      <p class="muted">到设定时间，宠物会弹出提醒面板（不点不消失）。<span class="badge">到点触发将在下一步接入</span></p>
+      <div id="reminder-list" class="reminder-list"></div>
+
+      <hr class="sep" />
+      <h3 class="subhead" id="reminder-form-title">添加提醒</h3>
+      <div class="field">
+        <label class="muted">时间</label>
+        <input type="datetime-local" id="rem-time" class="input" />
+      </div>
+      <div class="field">
+        <label class="muted">文案（≤50 字）</label>
+        <input type="text" id="rem-text" class="input" maxlength="50" placeholder="例如：起来喝口水 / 10 点开会" />
+      </div>
+      <div class="field">
+        <label class="muted">重复</label>
+        <select id="rem-repeat" class="input">
+          <option value="single">单次</option>
+          <option value="daily">每天</option>
+          <option value="weekly">每周</option>
+          <option value="workday">工作日</option>
+        </select>
+      </div>
+      <div class="row">
+        <button id="rem-save" class="btn">保存提醒</button>
+        <button id="rem-cancel" class="btn btn-ghost" style="display:none;">取消编辑</button>
+        <span id="rem-status" class="muted"></span>
+      </div>
     </section>
 
     <!-- 防沉迷（骨架，v1.1 填充）-->
