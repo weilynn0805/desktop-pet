@@ -1,12 +1,39 @@
 {
   "name": "desktop-pet",
   "version": "0.1.0",
-  "description": "桌面宠物 MVP —— 透明悬浮 + 拖动 + 位置记忆 + 防误退出",
+  "description": "桌面宠物 —— 透明悬浮 + 拖动 + 缩放 + 互动文案 + 设置面板",
+  "author": "Desktop Pet Dev",
   "main": "src/main/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder"
   },
   "devDependencies": {
-    "electron": "^32.0.0"
+    "electron": "^32.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.desktoppet.app",
+    "productName": "桌面宠物",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "桌面宠物"
+    }
   }
 }
