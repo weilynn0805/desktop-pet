@@ -233,6 +233,20 @@ function applyPaused(on) {
 window.petAPI.getPaused().then(applyPaused);
 window.petAPI.onPausedChanged(applyPaused);
 
+// ---- 锁屏 / 睡眠休眠：暂停视频与定时冒泡，唤醒后恢复（不写库，独立于用户暂停）----
+let hibernating = false;
+function applyHibernate(on) {
+  hibernating = !!on;
+  if (hibernating) {
+    hideBubble();
+    clearTimeout(autoHideTimer);
+    pet.querySelectorAll('video.media').forEach((v) => v.pause());
+  } else if (!paused) { // 唤醒后，若用户没有手动暂停才恢复播放
+    pet.querySelectorAll('video.media').forEach((v) => v.play().catch(() => {}));
+  }
+}
+window.petAPI.onHibernate(applyHibernate);
+
 let interactive = false;
 function setInteractive(on) {
   if (on === interactive) return; // 状态没变就不打扰主进程
@@ -274,7 +288,7 @@ window.addEventListener('wheel', (e) => {
 const AUTO_VISIBLE = 4000; // 每次显示时长(ms)
 let autoTimer = null;      // 周期定时器
 function autoBubble() {
-  if (paused || dragging || interactive) return; // 暂停/拖动/悬停 → 不打扰
+  if (paused || hibernating || dragging || interactive) return; // 暂停/休眠/拖动/悬停 → 不打扰
   showBubble();
   clearTimeout(autoHideTimer);
   autoHideTimer = setTimeout(hideBubble, AUTO_VISIBLE);

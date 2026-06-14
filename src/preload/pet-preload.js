@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('petAPI', {
   // 暂停 / 恢复：读取 + 监听变更
   getPaused: () => ipcRenderer.invoke('paused:get'),
   onPausedChanged: (cb) => ipcRenderer.on('pet:pausedChanged', (_e, on) => cb(on)),
+  // 锁屏 / 睡眠休眠：暂停动画（不持久化，独立于用户暂停）
+  onHibernate: (cb) => ipcRenderer.on('pet:hibernate', (_e, on) => cb(on)),
   getScale: () => ipcRenderer.invoke('pet:getScale'),
   setScale: (s) => ipcRenderer.send('pet:setScale', s),
   onScaleChanged: (cb) => ipcRenderer.on('pet:scaleChanged', (_e, s) => cb(s)),

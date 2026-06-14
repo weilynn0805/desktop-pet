@@ -91,6 +91,7 @@ app.whenReady().then(() => {
   petWin.webContents.once('did-finish-load', startRotation); // 窗口就绪后启动轮播定时器
   startReminderScheduler(); // 启动提醒到点检查
   startFatigueTimer();      // 启动防沉迷连续使用计时
+  registerPowerEvents();    // 监听锁屏/睡眠/唤醒
 });
 
 // 渲染进程在拖动开始时获取窗口当前位置（用于计算位移）
@@ -631,6 +632,7 @@ ipcMain.on('reminder:ack', (_e, id) => {
 // 检查到点提醒：触发后单次停用、重复推进到下次；写库并通知面板刷新
 function checkReminders() {
   if (getPaused()) return; // 暂停宠物 → 提醒一并暂停，不到点触发；恢复后下一拍补触发。§3.3 规则5
+  if (systemAsleep) return; // 锁屏/睡眠 → 提醒暂停，唤醒后补触发。§5.2
   const now = Date.now();
   const list = getReminders();
   const toFire = [];
@@ -706,6 +708,7 @@ let fatigueUseSeconds = 0;      // 当前连续使用累计秒数
 let fatigueTimer = null;
 let fatigueLastTick = Date.now();
 let restActive = false;         // 休息弹窗显示中：暂停计时，避免反复弹
+let systemAsleep = false;       // 锁屏/睡眠中：计时与提醒暂停（进入时已重置累计）
 
 // ---- 全屏休息覆盖层（5'.2/5'.3）：专属防沉迷素材，铺满全屏 + 倒计时 ----
 let restWin = null;
@@ -829,6 +832,7 @@ function fatigueTick() {
   const cfg = getFatigueCfg();
   if (!cfg.enabled) { fatigueUseSeconds = 0; sendFatigueStatus(); return; }
   if (getPaused()) { sendFatigueStatus(); return; } // 暂停宠物 → 计时一并冻结(不清零、不触发)；§3.3 规则5
+  if (systemAsleep) { sendFatigueStatus(); return; } // 锁屏/睡眠 → 计时暂停(进入时已重置)；§4.3/§5.2
   if (restActive) { sendFatigueStatus(); return; } // 休息弹窗显示中：暂停计时
   const idle = powerMonitor.getSystemIdleTime(); // 秒
   if (idle >= cfg.idle * 60) fatigueUseSeconds = 0; // 长时间空闲 → 视为已休息，清零
@@ -840,6 +844,30 @@ function startFatigueTimer() {
   clearInterval(fatigueTimer);
   fatigueLastTick = Date.now();
   fatigueTimer = setInterval(fatigueTick, 5 * 1000);
+}
+
+// ---- 锁屏 / 睡眠 / 唤醒：宠物休眠 + 计时/提醒暂停并重置累计（§4.3 / §5.2）----
+function onSystemSleep() {
+  if (systemAsleep) return;
+  systemAsleep = true;
+  fatigueUseSeconds = 0; // 离开电脑 → 重置连续使用累计（§4.3）
+  sendFatigueStatus();
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:hibernate', true); // 暂停宠物动画
+}
+function onSystemWake() {
+  if (!systemAsleep) return;
+  systemAsleep = false;
+  fatigueLastTick = Date.now(); // 避免唤醒瞬间把锁屏期间的时长一次性补算进来
+  sendFatigueStatus();
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:hibernate', false);
+  checkReminders(); // 唤醒后立刻补触发锁屏期间错过的提醒
+}
+// powerMonitor 须在 app ready 后使用
+function registerPowerEvents() {
+  powerMonitor.on('lock-screen', onSystemSleep);  // Windows 锁屏
+  powerMonitor.on('suspend', onSystemSleep);       // 系统睡眠
+  powerMonitor.on('unlock-screen', onSystemWake);  // 解锁
+  powerMonitor.on('resume', onSystemWake);         // 唤醒
 }
 // 面板打开时立即拿一次现状（推送每 5 秒一次，首屏不等）
 ipcMain.handle('fatigue:get', () => ({
