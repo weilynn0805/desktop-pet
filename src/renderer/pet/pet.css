@@ -14,6 +14,11 @@ body {
 }
 body.dragging { cursor: grabbing; }
 
+/* 暂停态：宠物变暗、停止一切动画（待机弹跳/互动动作），表示“已暂停” */
+body.paused .pet { opacity: .5; }
+body.paused .pet .body,
+body.paused .pet .media { animation: none !important; }
+
 .pet {
   width: 200px;
   height: 200px;

@@ -213,6 +213,20 @@ ipcMain.on('alwaysontop:set', (_e, on) => {
 // 退出应用
 ipcMain.on('app:quit', () => app.quit());
 
+// ---- 暂停 / 恢复宠物（暂停时停掉定时冒泡、动画与互动；持久化，重启保持）----
+function getPaused() {
+  return store.read().petPaused === true; // 默认不暂停
+}
+function setPaused(on) {
+  store.write({ petPaused: !!on });
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:pausedChanged', !!on);
+}
+ipcMain.handle('paused:get', () => getPaused());
+ipcMain.on('paused:set', (_e, on) => setPaused(on));
+
+// 双击宠物 → 打开设置面板（与右键菜单同一入口）
+ipcMain.on('pet:openPanel', () => openSettings());
+
 // 渲染进程启动时获取当前素材（无则返回 null → 显示默认 CSS 宠物）
 ipcMain.handle('pet:getAsset', () => store.read().petAsset || null);
 
@@ -289,11 +303,13 @@ ipcMain.handle('asset:reset', () => resetAsset());
 
 // 右键菜单（退出只走这里，避免误触）
 ipcMain.on('pet:showMenu', () => {
+  const paused = getPaused();
   const menu = Menu.buildFromTemplate([
+    { label: '打开面板...', click: openSettings },
+    { label: paused ? '恢复宠物' : '暂停宠物', click: () => setPaused(!paused) },
+    { type: 'separator' },
     { label: '选择素材...', click: () => pickAsset(petWin) },
     { label: '恢复默认形象', click: resetAsset },
-    { type: 'separator' },
-    { label: '打开设置...', click: openSettings },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() },
   ]);

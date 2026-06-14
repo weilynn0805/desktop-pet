@@ -41,9 +41,27 @@ pet.addEventListener('pointerup', (e) => {
   if (moved) {
     window.petAPI.savePosition(); // 拖动结束 → 持久化位置
   } else {
-    poke();                       // 未超过阈值 → 单击互动
+    onClickGesture();             // 未超过阈值 → 判定单击 / 双击
   }
 });
+
+// 单击 vs 双击：双击窗口内连点两次 → 开面板；否则延迟一点确认为单击 → 互动。
+// PRD §2.4：双击开面板，单击触发互动反应（单击因此带约一个时间窗的延迟，属预期）。
+const DOUBLE_MS = 280;
+let lastClickAt = 0;
+let clickTimer = null;
+function onClickGesture() {
+  const now = Date.now();
+  if (now - lastClickAt < DOUBLE_MS) {     // 双击
+    lastClickAt = 0;
+    clearTimeout(clickTimer); clickTimer = null;
+    window.petAPI.openPanel();
+    return;
+  }
+  lastClickAt = now;
+  clearTimeout(clickTimer);
+  clickTimer = setTimeout(() => { clickTimer = null; poke(); }, DOUBLE_MS); // 确认为单击
+}
 
 // 右键 → 主进程弹出菜单（退出只走这里）
 window.addEventListener('contextmenu', (e) => {
@@ -176,12 +194,29 @@ function positionBubble() {
   bubble.style.bottom = (window.innerHeight - topY + GAP) + 'px';
 }
 function showBubble() {
+  if (paused) return;          // 暂停态：不冒泡
   if (!PHRASES.length) return; // 文案未加载/被清空 → 不弹
   bubble.textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)];
   positionBubble(); // 先按当前大小定位，再淡入
   bubble.classList.add('show');
 }
 function hideBubble() { bubble.classList.remove('show'); }
+
+// ---- 暂停 / 恢复：停掉定时冒泡、互动动画与视频，视觉上变暗表示已暂停 ----
+let paused = false;
+function applyPaused(on) {
+  paused = !!on;
+  document.body.classList.toggle('paused', paused);
+  if (paused) {
+    hideBubble();
+    clearTimeout(autoHideTimer);
+    pet.querySelectorAll('video.media').forEach((v) => v.pause());
+  } else {
+    pet.querySelectorAll('video.media').forEach((v) => v.play().catch(() => {}));
+  }
+}
+window.petAPI.getPaused().then(applyPaused);
+window.petAPI.onPausedChanged(applyPaused);
 
 let interactive = false;
 function setInteractive(on) {
@@ -224,7 +259,7 @@ window.addEventListener('wheel', (e) => {
 const AUTO_VISIBLE = 4000; // 每次显示时长(ms)
 let autoTimer = null;      // 周期定时器
 function autoBubble() {
-  if (dragging || interactive) return; // 正在拖动/悬停 → 不打扰，让位给悬停气泡
+  if (paused || dragging || interactive) return; // 暂停/拖动/悬停 → 不打扰
   showBubble();
   clearTimeout(autoHideTimer);
   autoHideTimer = setTimeout(hideBubble, AUTO_VISIBLE);
@@ -257,6 +292,7 @@ function showReaction() {
 }
 
 function poke() {
+  if (paused) return; // 暂停态：单击不互动
   const move = MOVES[Math.floor(Math.random() * MOVES.length)];
   pet.classList.remove(...MOVES);
   void pet.offsetWidth; // 强制重排以重置动画

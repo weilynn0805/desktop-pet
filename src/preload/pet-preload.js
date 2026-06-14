@@ -6,7 +6,11 @@ contextBridge.exposeInMainWorld('petAPI', {
   move: (x, y) => ipcRenderer.send('pet:move', { x, y }),
   savePosition: () => ipcRenderer.send('pet:savePosition'),
   showMenu: () => ipcRenderer.send('pet:showMenu'),
+  openPanel: () => ipcRenderer.send('pet:openPanel'), // 双击宠物开面板
   setInteractive: (on) => ipcRenderer.send('pet:setInteractive', on),
+  // 暂停 / 恢复：读取 + 监听变更
+  getPaused: () => ipcRenderer.invoke('paused:get'),
+  onPausedChanged: (cb) => ipcRenderer.on('pet:pausedChanged', (_e, on) => cb(on)),
   getScale: () => ipcRenderer.invoke('pet:getScale'),
   setScale: (s) => ipcRenderer.send('pet:setScale', s),
   onScaleChanged: (cb) => ipcRenderer.on('pet:scaleChanged', (_e, s) => cb(s)),
