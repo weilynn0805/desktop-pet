@@ -44,6 +44,28 @@ html, body {
   font-size: 13px;
 }
 
+/* 骨架卡片（功能未上线，仅占位预览）：虚线边框 + 角标 */
+.card-soon { border-style: dashed; }
+.card-soon h2 { color: #6b6f78; }
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c7fd6;
+  background: #eef0ff;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+.soon-list {
+  margin: 6px 0 12px;
+  padding-left: 18px;
+  color: #8a8f98;
+  font-size: 13px;
+}
+.soon-list li { margin: 3px 0; }
+
 .textarea {
   width: 100%;
   margin-top: 10px;
