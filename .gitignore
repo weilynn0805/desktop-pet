@@ -5,6 +5,7 @@ node_modules/
 # 注意：electron 的 userData 配置在系统目录，不在本项目内，这里仅作占位说明
 dist/
 out/
+测试安装包/
 
 # 日志
 *.log
