@@ -577,6 +577,14 @@ function playFiredSounds(items) {
 }
 
 // 触发一组提醒：合入待确认列表 → 弹窗（已开则追加）→ 播提示音
+// 把提醒窗顶到最上层（高于全屏休息覆盖层）。两者同为 screen-saver 级，靠重置置顶+moveTop 决出先后。§3.3 规则1
+function raiseReminderTop() {
+  if (reminderWin && !reminderWin.isDestroyed()) {
+    reminderWin.setAlwaysOnTop(true, 'screen-saver');
+    reminderWin.moveTop();
+    reminderWin.focus();
+  }
+}
 function pushReminderPopup(items) {
   if (!items || !items.length) return;
   pendingReminders.push(...items);
@@ -587,6 +595,7 @@ function pushReminderPopup(items) {
       reminderWin.webContents.send('reminder:list', pendingReminders);
       positionReminder();
       reminderWin.show();
+      raiseReminderTop(); // 提醒为最高叠加层：浮到全屏休息层之上。§3.3 规则1
       playFiredSounds(items);
     });
   } else {
@@ -594,8 +603,10 @@ function pushReminderPopup(items) {
     reminderWin.webContents.send('reminder:list', pendingReminders);
     positionReminder();
     reminderWin.show();
+    raiseReminderTop();
     playFiredSounds(items);
   }
+  pauseRestForReminder(); // 若正在全屏休息 → 暂停其倒计时，待提醒处理完再恢复
 }
 
 // 渲染层报告内容高度 → 自适应窗口高度并重新贴右下角
@@ -611,6 +622,7 @@ ipcMain.on('reminder:ack', (_e, id) => {
   pendingReminders = pendingReminders.filter((r) => r.id !== id);
   if (!pendingReminders.length) {
     if (reminderWin && !reminderWin.isDestroyed()) reminderWin.close();
+    resumeRestAfterReminder(); // 提醒全部确认完 → 恢复防沉迷倒计时。§3.3 规则2
   } else if (reminderWin && !reminderWin.isDestroyed()) {
     reminderWin.webContents.send('reminder:list', pendingReminders);
   }
@@ -764,9 +776,17 @@ function createRestWindow() {
   restWin.loadFile(path.join(__dirname, '../renderer/rest/index.html'));
   restWin.on('closed', () => { restWin = null; });
 }
+// 提醒打断防沉迷休息：暂停/恢复全屏倒计时（仅在休息覆盖层活动时有意义）。§3.3 规则2
+function pauseRestForReminder() {
+  if (restActive && restWin && !restWin.isDestroyed()) restWin.webContents.send('rest:pause');
+}
+function resumeRestAfterReminder() {
+  if (restActive && restWin && !restWin.isDestroyed()) restWin.webContents.send('rest:resume');
+}
 function showRest(usedMinutes) {
   restActive = true; // 立即置位：下一拍跳过累加，不会重复弹
-  const payload = { minutes: usedMinutes, restSeconds: getFatigueCfg().rest * 60 };
+  // 若弹休息时已有未确认提醒，倒计时起步即暂停（提醒优先）
+  const payload = { minutes: usedMinutes, restSeconds: getFatigueCfg().rest * 60, paused: pendingReminders.length > 0 };
   if (!restWin || restWin.isDestroyed()) {
     createRestWindow();
     restWin.webContents.once('did-finish-load', () => {
@@ -774,12 +794,14 @@ function showRest(usedMinutes) {
       restWin.webContents.send('rest:show', payload);
       restWin.show();
       restWin.focus();
+      if (pendingReminders.length) raiseReminderTop(); // 已有提醒在 → 让它压在休息层之上
     });
   } else {
     sendRestAsset();
     restWin.webContents.send('rest:show', payload);
     restWin.show();
     restWin.focus();
+    if (pendingReminders.length) raiseReminderTop();
   }
 }
 // 结束休息（点“好的”）→ 清零计时、恢复计时、关窗
