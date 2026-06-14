@@ -9,4 +9,7 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 定时主动冒泡配置：读取 + 保存
   getAutoBubble: () => ipcRenderer.invoke('autobubble:get'),
   setAutoBubble: (cfg) => ipcRenderer.send('autobubble:set', cfg),
+  // 开机自启：读取 + 设置
+  getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
+  setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),
 });

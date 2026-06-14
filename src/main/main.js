@@ -144,6 +144,17 @@ function getAutoBubble() {
     interval: Number.isFinite(interval) && interval > 0 ? interval : 25, // 默认 25 秒
   };
 }
+// ---- 开机自启（由操作系统登录项管理，OS 即真相来源）----
+// 开发态(electron .)需显式指定 electron 路径与项目目录，打包后用默认即可
+function loginItemOpts(extra) {
+  if (app.isPackaged) return extra || {};
+  return { path: process.execPath, args: [path.resolve(process.argv[1] || '.')], ...(extra || {}) };
+}
+ipcMain.handle('autolaunch:get', () => app.getLoginItemSettings(loginItemOpts()).openAtLogin);
+ipcMain.on('autolaunch:set', (_e, enable) => {
+  app.setLoginItemSettings(loginItemOpts({ openAtLogin: !!enable }));
+});
+
 ipcMain.handle('autobubble:get', () => getAutoBubble());
 ipcMain.on('autobubble:set', (_e, cfg) => {
   let interval = Math.round(Number(cfg && cfg.interval));

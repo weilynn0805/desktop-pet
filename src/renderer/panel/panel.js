@@ -36,3 +36,14 @@ document.getElementById('save-auto').addEventListener('click', () => {
   status.textContent = autoEnabled.checked ? `已保存，每 ${interval} 秒` : '已关闭';
   setTimeout(() => { status.textContent = ''; }, 2000);
 });
+
+// 行为 · 开机自启：载入当前状态，切换即时生效
+const autoLaunch = document.getElementById('auto-launch');
+const autoLaunchHint = document.getElementById('auto-launch-hint');
+window.panelAPI.getAutoLaunch().then((on) => { autoLaunch.checked = on; });
+autoLaunch.addEventListener('change', () => {
+  window.panelAPI.setAutoLaunch(autoLaunch.checked);
+  autoLaunchHint.textContent = autoLaunch.checked
+    ? '已开启：登录系统后自动运行。'
+    : '已关闭：不再随系统启动。';
+});
