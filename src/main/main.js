@@ -12,6 +12,7 @@ const MIN_SCALE = 0.5, MAX_SCALE = 2.5; // 缩放范围
 const WIN_SIZE = Math.round(PET_SIZE * MAX_SCALE);
 const MARGIN = Math.round((WIN_SIZE - PET_SIZE) / 2); // 宠物居中后四周的透明留白
 let petWin = null;
+let settingsWin = null; // 设置面板（单例）
 
 const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s || 1));
 
@@ -57,6 +58,32 @@ function createPetWindow() {
   return win;
 }
 
+// 打开设置面板：已存在则聚焦，否则新建（普通带边框窗口）
+function openSettings() {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.show();
+    settingsWin.focus();
+    return;
+  }
+  settingsWin = new BrowserWindow({
+    width: 420,
+    height: 560,
+    title: '桌面宠物 · 设置',
+    resizable: true,
+    minimizable: true,
+    maximizable: false,
+    skipTaskbar: false,
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/panel-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  settingsWin.setMenuBarVisibility(false); // 隐藏默认菜单栏
+  settingsWin.loadFile(path.join(__dirname, '../renderer/panel/index.html'));
+  settingsWin.on('closed', () => { settingsWin = null; });
+}
+
 app.whenReady().then(() => {
   petWin = createPetWindow();
 });
@@ -77,6 +104,13 @@ ipcMain.on('pet:savePosition', () => {
   const [x, y] = petWin.getPosition();
   store.write({ petPosition: { x, y } });
 });
+
+// 设置面板：返回版本/环境信息
+ipcMain.handle('panel:getInfo', () => ({
+  version: app.getVersion(),
+  electron: process.versions.electron,
+  platform: `${process.platform} ${process.arch}`,
+}));
 
 // 缩放：渲染层负责改 CSS transform，这里只读/存比例
 ipcMain.handle('pet:getScale', () => clampScale(store.read().petScale));
@@ -147,7 +181,8 @@ ipcMain.on('pet:showMenu', () => {
     { label: '选择素材...', click: pickAsset },
     { label: '恢复默认形象', click: resetAsset },
     { type: 'separator' },
-    // 后续在此追加：打开控制面板 / 暂停宠物
+    { label: '打开设置...', click: openSettings },
+    { type: 'separator' },
     { label: '退出', click: () => app.quit() },
   ]);
   menu.popup({ window: petWin });
