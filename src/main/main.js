@@ -137,6 +137,18 @@ ipcMain.on('phrases:set', (_e, list) => {
   }
 });
 
+// ---- 默认文案开关：关掉后宠物只说素材专属文案（无专属则不说）----
+function getDefaultPhrasesEnabled() {
+  return store.read().defaultPhrasesEnabled !== false; // 默认开启
+}
+ipcMain.handle('defaultphrases:get', () => getDefaultPhrasesEnabled());
+ipcMain.on('defaultphrases:set', (_e, on) => {
+  store.write({ defaultPhrasesEnabled: !!on });
+  if (petWin && !petWin.isDestroyed()) {
+    petWin.webContents.send('pet:defaultPhrasesChanged', !!on);
+  }
+});
+
 // ---- 被戳台词（单击宠物时的反应）----
 const DEFAULT_REACTIONS = [
   '嘿嘿，好痒～',
@@ -354,11 +366,26 @@ function removeAsset(index) {
   return list;
 }
 
+// 设置第 index 个素材的专属文案（≤20 字，可清空）。
+// 若改的正是当前显示的素材，单独推 caption 给宠物窗（不重渲染素材，避免闪烁）。
+function setAssetCaption(index, caption) {
+  const list = getAssets();
+  if (index < 0 || index >= list.length) return list;
+  const c = String(caption || '').trim().slice(0, 20);
+  list[index] = { ...list[index], caption: c || undefined };
+  store.write({ petAssets: list, petAsset: null });
+  if (index === rotateIndex && petWin && !petWin.isDestroyed()) {
+    petWin.webContents.send('pet:captionChanged', c);
+  }
+  return list;
+}
+
 // 设置面板的素材读写
 ipcMain.handle('assets:list', () => getAssets());
 ipcMain.handle('assets:add', () => addAssets(settingsWin));
 ipcMain.handle('assets:remove', (_e, index) => removeAsset(index));
 ipcMain.handle('assets:next', () => rotateNext());
+ipcMain.on('assets:setCaption', (_e, { index, caption }) => setAssetCaption(index, caption));
 ipcMain.handle('rotate:get', () => ({ minutes: getRotateMinutes() }));
 ipcMain.on('rotate:set', (_e, minutes) => {
   let m = Math.round(Number(minutes));

@@ -24,6 +24,10 @@ function renderAssets(list) {
       const item = document.createElement('div');
       item.className = 'asset-item';
 
+      // 顶部行：缩略图 + 文件名/类型 + 删除
+      const row = document.createElement('div');
+      row.className = 'asset-row';
+
       const thumb = document.createElement('div');
       thumb.className = 'thumb';
       const el = document.createElement(asset.type === 'video' ? 'video' : 'img');
@@ -49,9 +53,23 @@ function renderAssets(list) {
         renderAssets(await window.panelAPI.removeAsset(i));
       });
 
-      item.appendChild(thumb);
-      item.appendChild(info);
-      item.appendChild(del);
+      row.appendChild(thumb);
+      row.appendChild(info);
+      row.appendChild(del);
+
+      // 专属文案输入（≤20 字，可留空）；失焦即保存
+      const cap = document.createElement('input');
+      cap.className = 'cap-input';
+      cap.type = 'text';
+      cap.maxLength = 20;
+      cap.placeholder = '专属文案（≤20字，可留空，会与默认文案一起出现）';
+      cap.value = asset.caption || '';
+      cap.addEventListener('change', () => {
+        window.panelAPI.setAssetCaption(i, cap.value);
+      });
+
+      item.appendChild(row);
+      item.appendChild(cap);
       assetListEl.appendChild(item);
     });
   }
@@ -95,6 +113,13 @@ document.getElementById('save-phrases').addEventListener('click', () => {
   const status = document.getElementById('phrases-status');
   status.textContent = list.length ? `已保存 ${list.length} 条` : '已清空，恢复默认';
   setTimeout(() => { status.textContent = ''; }, 2000);
+});
+
+// 启用默认文案：载入状态，切换即时生效
+const defaultPhrases = document.getElementById('default-phrases');
+window.panelAPI.getDefaultPhrases().then((on) => { defaultPhrases.checked = on; });
+defaultPhrases.addEventListener('change', () => {
+  window.panelAPI.setDefaultPhrases(defaultPhrases.checked);
 });
 
 // 被戳台词：载入到文本框

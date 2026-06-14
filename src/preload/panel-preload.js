@@ -6,6 +6,9 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 互动文案：读取 + 保存
   getPhrases: () => ipcRenderer.invoke('phrases:get'),
   setPhrases: (list) => ipcRenderer.send('phrases:set', list),
+  // 默认文案开关：读取 + 设置
+  getDefaultPhrases: () => ipcRenderer.invoke('defaultphrases:get'),
+  setDefaultPhrases: (on) => ipcRenderer.send('defaultphrases:set', on),
   // 被戳台词：读取 + 保存
   getReactions: () => ipcRenderer.invoke('reactions:get'),
   setReactions: (list) => ipcRenderer.send('reactions:set', list),
@@ -20,6 +23,7 @@ contextBridge.exposeInMainWorld('panelAPI', {
   addAsset: () => ipcRenderer.invoke('assets:add'),
   removeAsset: (i) => ipcRenderer.invoke('assets:remove', i),
   nextAsset: () => ipcRenderer.invoke('assets:next'),
+  setAssetCaption: (index, caption) => ipcRenderer.send('assets:setCaption', { index, caption }),
   onAssetsChanged: (cb) => ipcRenderer.on('panel:assetsChanged', (_e, list) => cb(list)),
   // 轮播间隔（分钟）：读取 / 保存
   getRotate: () => ipcRenderer.invoke('rotate:get'),

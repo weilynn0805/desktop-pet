@@ -154,17 +154,32 @@ html, body {
 }
 .asset-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px;
   border: 1px solid #e6e8eb;
   border-radius: 8px;
+}
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .asset-item .thumb {
   width: 48px;
   height: 48px;
   flex: 0 0 48px;
 }
+.cap-input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid #d6d9dd;
+  border-radius: 8px;
+  font: 13px "Microsoft YaHei", system-ui, sans-serif;
+  color: #2b2d31;
+  outline: none;
+}
+.cap-input:focus { border-color: #7c84ff; }
 
 .btn-ghost {
   background: #eef0f3;

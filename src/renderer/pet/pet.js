@@ -101,8 +101,10 @@ function renderVideo(asset) {
   pet.appendChild(v);
 }
 
+let currentCaption = ''; // 当前素材的专属文案（随素材切换更新）
 function renderAsset(asset) {
   clearMedia();
+  currentCaption = asset && asset.caption ? String(asset.caption) : '';
   if (!asset) { defaultBody.style.display = ''; return; } // 回退默认形象
   defaultBody.style.display = 'none';
   if (asset.type === 'video') renderVideo(asset);
@@ -112,6 +114,8 @@ function renderAsset(asset) {
 // 启动时加载已保存素材；之后监听主进程的素材变更
 window.petAPI.getAsset().then(renderAsset);
 window.petAPI.onAssetChanged(renderAsset);
+// 面板里实时编辑“当前素材”的专属文案时，只更新文案、不重渲染素材
+window.petAPI.onCaptionChanged((c) => { currentCaption = c || ''; });
 
 // ---- 鼠标穿透：仅当指针落在宠物“实际像素”上才拦截，其余区域穿透到下层应用 ----
 const hitCanvas = document.createElement('canvas');
@@ -193,10 +197,21 @@ function positionBubble() {
   bubble.style.left = (r.left + r.width / 2) + 'px';
   bubble.style.bottom = (window.innerHeight - topY + GAP) + 'px';
 }
+// 默认文案开关：关掉后只用素材专属文案
+let useDefaults = true;
+window.petAPI.getDefaultPhrases().then((on) => { useDefaults = on; });
+window.petAPI.onDefaultPhrasesChanged((on) => { useDefaults = on; });
+
+// 文案池 = 专属文案 +（开启时）默认文案池
+function bubblePool() {
+  const defaults = useDefaults ? PHRASES : [];
+  return currentCaption ? [currentCaption, ...defaults] : defaults;
+}
 function showBubble() {
   if (paused) return;          // 暂停态：不冒泡
-  if (!PHRASES.length) return; // 文案未加载/被清空 → 不弹
-  bubble.textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+  const pool = bubblePool();
+  if (!pool.length) return;    // 文案全空 → 不弹
+  bubble.textContent = pool[Math.floor(Math.random() * pool.length)];
   positionBubble(); // 先按当前大小定位，再淡入
   bubble.classList.add('show');
 }

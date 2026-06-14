@@ -37,12 +37,16 @@
     <!-- 互动文案 -->
     <section class="card">
       <h2>互动文案</h2>
-      <p class="muted">每行一句，宠物悬停时随机显示。留空则恢复默认文案。</p>
+      <p class="muted">默认文案池，每行一句，悬停/冒泡时随机显示。若某素材设了专属文案，会与这里的默认文案一起出现。留空则恢复内置默认。</p>
       <textarea id="phrases" class="textarea" rows="8" placeholder="一行一句…"></textarea>
       <div class="row">
         <button id="save-phrases" class="btn">保存</button>
         <span id="phrases-status" class="muted"></span>
       </div>
+      <label class="check" style="margin-top:10px;">
+        <input type="checkbox" id="default-phrases" /> 启用默认文案
+      </label>
+      <p class="muted">关闭后宠物只说素材的专属文案；没有专属文案则不说话。</p>
 
       <hr class="sep" />
       <label class="check">
