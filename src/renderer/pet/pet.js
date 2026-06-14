@@ -130,15 +130,9 @@ function overPet(cx, cy) {
 
 // ---- 悬停气泡文案 ----
 const bubble = document.getElementById('bubble');
-const PHRASES = [
-  '你好呀～',
-  '今天也要加油哦！',
-  '记得起来喝口水 💧',
-  '摸摸我吧～',
-  '在忙什么呢？',
-  '休息一下眼睛吧 👀',
-  '我一直在这儿陪你 ✨',
-];
+let PHRASES = []; // 从配置加载，可在设置面板编辑后热更新
+window.petAPI.getPhrases().then((list) => { PHRASES = list; });
+window.petAPI.onPhrasesChanged((list) => { PHRASES = list; });
 // 扫描图片最顶端不透明像素，返回其占图高的比例（0=顶,1=底）。按 src 缓存。
 let opaqueTopCache = { src: null, ratio: 0 };
 function imageOpaqueTopRatio(img) {
@@ -180,6 +174,7 @@ function positionBubble() {
   bubble.style.bottom = (window.innerHeight - topY + GAP) + 'px';
 }
 function showBubble() {
+  if (!PHRASES.length) return; // 文案未加载/被清空 → 不弹
   bubble.textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)];
   positionBubble(); // 先按当前大小定位，再淡入
   bubble.classList.add('show');

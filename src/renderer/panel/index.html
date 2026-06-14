@@ -20,7 +20,12 @@
     <!-- 互动文案 -->
     <section class="card">
       <h2>互动文案</h2>
-      <p class="muted">编辑悬停/定时台词、设置冒泡频率（后续接入）。</p>
+      <p class="muted">每行一句，宠物悬停时随机显示。留空则恢复默认文案。</p>
+      <textarea id="phrases" class="textarea" rows="8" placeholder="一行一句…"></textarea>
+      <div class="row">
+        <button id="save-phrases" class="btn">保存</button>
+        <span id="phrases-status" class="muted"></span>
+      </div>
     </section>
 
     <!-- 行为 -->

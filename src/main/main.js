@@ -112,6 +112,29 @@ ipcMain.handle('panel:getInfo', () => ({
   platform: `${process.platform} ${process.arch}`,
 }));
 
+// ---- 互动文案 ----
+const DEFAULT_PHRASES = [
+  '你好呀～',
+  '今天也要加油哦！',
+  '记得起来喝口水 💧',
+  '摸摸我吧～',
+  '在忙什么呢？',
+  '休息一下眼睛吧 👀',
+  '我一直在这儿陪你 ✨',
+];
+function getPhrases() {
+  const p = store.read().petPhrases;
+  return Array.isArray(p) && p.length ? p : DEFAULT_PHRASES; // 空则回退默认
+}
+ipcMain.handle('phrases:get', () => getPhrases());
+ipcMain.on('phrases:set', (_e, list) => {
+  const clean = Array.isArray(list) ? list.map((s) => String(s).trim()).filter(Boolean) : [];
+  store.write({ petPhrases: clean.length ? clean : null }); // 清空 → 存 null → 回退默认
+  if (petWin && !petWin.isDestroyed()) {
+    petWin.webContents.send('pet:phrasesChanged', getPhrases()); // 通知宠物热更新
+  }
+});
+
 // 缩放：渲染层负责改 CSS transform，这里只读/存比例
 ipcMain.handle('pet:getScale', () => clampScale(store.read().petScale));
 ipcMain.on('pet:setScale', (_e, s) => store.write({ petScale: clampScale(s) }));

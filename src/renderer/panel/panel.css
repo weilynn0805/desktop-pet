@@ -43,3 +43,35 @@ html, body {
   color: #8a8f98;
   font-size: 13px;
 }
+
+.textarea {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #d6d9dd;
+  border-radius: 8px;
+  font: 13px/1.6 "Microsoft YaHei", system-ui, sans-serif;
+  color: #2b2d31;
+  resize: vertical;
+  outline: none;
+}
+.textarea:focus { border-color: #7c84ff; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.btn {
+  padding: 6px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #7c84ff;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { background: #6a72f0; }
+.btn:active { background: #5a62e0; }

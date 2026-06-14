@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   getAsset: () => ipcRenderer.invoke('pet:getAsset'),
   // 素材变化时主进程主动推送（选择/恢复默认）
   onAssetChanged: (cb) => ipcRenderer.on('pet:assetChanged', (_e, asset) => cb(asset)),
+  // 互动文案：读取 + 监听变更
+  getPhrases: () => ipcRenderer.invoke('phrases:get'),
+  onPhrasesChanged: (cb) => ipcRenderer.on('pet:phrasesChanged', (_e, list) => cb(list)),
 });
