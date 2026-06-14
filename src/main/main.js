@@ -135,6 +135,29 @@ ipcMain.on('phrases:set', (_e, list) => {
   }
 });
 
+// ---- 被戳台词（单击宠物时的反应）----
+const DEFAULT_REACTIONS = [
+  '嘿嘿，好痒～',
+  '别戳啦 >_<',
+  '么么哒 (｡･ω･｡)',
+  '干嘛呀～',
+  '再戳我要害羞了',
+  '哎呀！',
+  '你戳到我啦',
+];
+function getReactions() {
+  const r = store.read().petReactions;
+  return Array.isArray(r) && r.length ? r : DEFAULT_REACTIONS;
+}
+ipcMain.handle('reactions:get', () => getReactions());
+ipcMain.on('reactions:set', (_e, list) => {
+  const clean = Array.isArray(list) ? list.map((s) => String(s).trim()).filter(Boolean) : [];
+  store.write({ petReactions: clean.length ? clean : null }); // 清空 → 回退默认
+  if (petWin && !petWin.isDestroyed()) {
+    petWin.webContents.send('pet:reactionsChanged', getReactions());
+  }
+});
+
 // ---- 定时主动冒泡配置（是否开启 + 间隔秒数）----
 function getAutoBubble() {
   const s = store.read();

@@ -240,15 +240,10 @@ window.petAPI.getAutoBubble().then(applyAutoBubble);
 window.petAPI.onAutoBubbleChanged(applyAutoBubble);
 
 // ---- 单击互动：随机动作动画 + 专属反应台词 ----
-const REACTIONS = [
-  '嘿嘿，好痒～',
-  '别戳啦 >_<',
-  '么么哒 (｡･ω･｡)',
-  '干嘛呀～',
-  '再戳我要害羞了',
-  '哎呀！',
-  '你戳到我啦',
-];
+let REACTIONS = []; // 从配置加载，可在设置面板编辑后热更新
+window.petAPI.getReactions().then((list) => { REACTIONS = list; });
+window.petAPI.onReactionsChanged((list) => { REACTIONS = list; });
+
 const MOVES = ['poke', 'jump', 'wiggle']; // 三种动作动画，随机其一
 let moveTimer = null;                      // 动画结束后移除动作类，恢复待机弹跳
 

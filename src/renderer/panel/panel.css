@@ -82,6 +82,12 @@ html, body {
   border-top: 1px solid #eceef1;
 }
 
+.subhead {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .check {
   display: flex;
   align-items: center;

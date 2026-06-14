@@ -18,4 +18,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   // 定时主动冒泡配置：读取 + 监听变更
   getAutoBubble: () => ipcRenderer.invoke('autobubble:get'),
   onAutoBubbleChanged: (cb) => ipcRenderer.on('pet:autoBubbleChanged', (_e, cfg) => cb(cfg)),
+  // 被戳台词：读取 + 监听变更
+  getReactions: () => ipcRenderer.invoke('reactions:get'),
+  onReactionsChanged: (cb) => ipcRenderer.on('pet:reactionsChanged', (_e, list) => cb(list)),
 });

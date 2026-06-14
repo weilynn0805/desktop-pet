@@ -51,6 +51,17 @@ document.getElementById('save-phrases').addEventListener('click', () => {
   setTimeout(() => { status.textContent = ''; }, 2000);
 });
 
+// 被戳台词：载入到文本框
+const reactionsTa = document.getElementById('reactions');
+window.panelAPI.getReactions().then((list) => { reactionsTa.value = list.join('\n'); });
+document.getElementById('save-reactions').addEventListener('click', () => {
+  const list = reactionsTa.value.split('\n').map((s) => s.trim()).filter(Boolean);
+  window.panelAPI.setReactions(list);
+  const status = document.getElementById('reactions-status');
+  status.textContent = list.length ? `已保存 ${list.length} 条` : '已清空，恢复默认';
+  setTimeout(() => { status.textContent = ''; }, 2000);
+});
+
 // 定时主动冒泡：载入开关 + 间隔
 const autoEnabled = document.getElementById('auto-enabled');
 const autoInterval = document.getElementById('auto-interval');
