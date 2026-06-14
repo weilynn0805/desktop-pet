@@ -1,0 +1,69 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+  background: transparent;            /* 窗口透明，暗化交给 .overlay */
+  font: 14px/1.5 "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+/* 全屏覆盖层：柔和暗化背景，桌面仍隐约可见（温和、不强制锁屏）*/
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(20, 24, 40, 0.45), rgba(8, 10, 18, 0.66));
+  animation: fade-in 0.5s ease both;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* 大宠物素材：铺满全屏（透明区域透出暗化背景）*/
+.pet {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pet img, .pet video { width: 100vw; height: 100vh; object-fit: contain; }
+.pet.default { font-size: min(30vw, 26vh); }
+.pet.default::after { content: "🐾"; }
+
+/* 大倒计时：顶部居中，叠在素材之上 */
+.timer {
+  position: fixed;
+  top: 6vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 2;
+  color: #fff;
+  font-size: 108px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* 跳过：底部居中 */
+.skip {
+  position: fixed;
+  bottom: 6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 9px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.skip:hover { background: rgba(255, 255, 255, 0.22); }
+.skip:active { background: rgba(255, 255, 255, 0.3); }

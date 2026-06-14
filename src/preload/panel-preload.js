@@ -30,6 +30,10 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 防沉迷：读取当前计时现状 + 监听实时状态推送（usage/idle/cfg）
   getFatigue: () => ipcRenderer.invoke('fatigue:get'),
   onFatigueStatus: (cb) => ipcRenderer.on('panel:fatigueStatus', (_e, s) => cb(s)),
+  // 防沉迷全屏素材：读取 / 上传 / 清除（专属，独立于提醒头像）
+  getFatigueAsset: () => ipcRenderer.invoke('fatigueasset:get'),
+  pickFatigueAsset: () => ipcRenderer.invoke('fatigueasset:pick'),
+  clearFatigueAsset: () => ipcRenderer.invoke('fatigueasset:clear'),
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),

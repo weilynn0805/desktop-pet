@@ -452,3 +452,30 @@ function renderFatigue(st) {
 }
 window.panelAPI.getFatigue().then(renderFatigue);     // 首屏立即拿一次
 window.panelAPI.onFatigueStatus(renderFatigue);       // 之后每 5 秒推送刷新
+
+// 防沉迷全屏素材：上传 / 清除（专属，独立于提醒头像）
+const faThumb = document.getElementById('fa-thumb');
+const faStatus = document.getElementById('fa-status');
+function renderFaThumb(asset) {
+  faThumb.innerHTML = '';
+  if (asset && asset.path) {
+    faThumb.classList.remove('empty');
+    const el = document.createElement(asset.type === 'video' ? 'video' : 'img');
+    el.src = toFileURL(asset.path);
+    if (asset.type === 'video') { el.muted = el.loop = el.autoplay = true; el.playsInline = true; }
+    faThumb.appendChild(el);
+  } else {
+    faThumb.classList.add('empty'); // 🐾 占位 = 用默认
+  }
+}
+function flashFa(msg) { faStatus.textContent = msg; setTimeout(() => { faStatus.textContent = ''; }, 2000); }
+window.panelAPI.getFatigueAsset().then(renderFaThumb);
+document.getElementById('fa-pick').addEventListener('click', async () => {
+  const a = await window.panelAPI.pickFatigueAsset();
+  renderFaThumb(a);
+  if (a) flashFa('已更新全屏素材');
+});
+document.getElementById('fa-clear').addEventListener('click', async () => {
+  renderFaThumb(await window.panelAPI.clearFatigueAsset());
+  flashFa('已清除');
+});

@@ -692,6 +692,103 @@ function getFatigueCfg() {
 let fatigueUseSeconds = 0;      // 当前连续使用累计秒数
 let fatigueTimer = null;
 let fatigueLastTick = Date.now();
+let restActive = false;         // 休息弹窗显示中：暂停计时，避免反复弹
+
+// ---- 全屏休息覆盖层（5'.2/5'.3）：专属防沉迷素材，铺满全屏 + 倒计时 ----
+let restWin = null;
+// 防沉迷专属素材（与提醒头像/宠物形象互不相关）：建议透明底图片/动图/视频
+function getFatigueAsset() {
+  const a = store.read().fatigueAsset;
+  return a && a.path && fs.existsSync(a.path) ? a : null; // 文件丢失视为未设置
+}
+ipcMain.handle('fatigueasset:get', () => getFatigueAsset());
+ipcMain.handle('fatigueasset:pick', () => {
+  const owner = settingsWin && !settingsWin.isDestroyed() ? settingsWin : petWin;
+  const res = dialog.showOpenDialogSync(owner, {
+    title: '选择防沉迷全屏素材（建议透明底图片/动图/视频）',
+    properties: ['openFile'],
+    filters: [
+      { name: '素材（图片/动图/视频）', extensions: assets.PICK_EXTENSIONS },
+      { name: '所有文件', extensions: ['*'] },
+    ],
+  });
+  if (!res || !res.length) return getFatigueAsset();
+  const imported = assets.importAsset(res[0]); // 复制进 userData/assets，返回 {path,type}
+  if (!imported) return getFatigueAsset();
+  const old = store.read().fatigueAsset;
+  store.write({ fatigueAsset: imported });
+  if (old && old.path && old.path !== imported.path) { try { fs.unlinkSync(old.path); } catch {} }
+  return getFatigueAsset();
+});
+ipcMain.handle('fatigueasset:clear', () => {
+  const old = store.read().fatigueAsset;
+  store.write({ fatigueAsset: null });
+  if (old && old.path) { try { fs.unlinkSync(old.path); } catch {} }
+  return null;
+});
+function sendRestAsset() {
+  if (restWin && !restWin.isDestroyed()) {
+    restWin.webContents.send('rest:pet', { asset: getFatigueAsset() });
+  }
+}
+// 全屏覆盖层：盖满主屏（含任务栏，screen-saver 层级），透明背景由渲染层做柔和暗化
+function createRestWindow() {
+  const { bounds } = screen.getPrimaryDisplay();
+  restWin = new BrowserWindow({
+    x: bounds.x,
+    y: bounds.y,
+    width: bounds.width,
+    height: bounds.height,
+    transparent: true,
+    frame: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    show: false,
+    title: '休息一下',
+    webPreferences: {
+      preload: path.join(__dirname, '../preload/rest-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: false, // 加载本地大尺寸素材
+    },
+  });
+  restWin.setAlwaysOnTop(true, 'screen-saver');
+  restWin.setMenuBarVisibility(false);
+  restWin.loadFile(path.join(__dirname, '../renderer/rest/index.html'));
+  restWin.on('closed', () => { restWin = null; });
+}
+function showRest(usedMinutes) {
+  restActive = true; // 立即置位：下一拍跳过累加，不会重复弹
+  const payload = { minutes: usedMinutes, restSeconds: getFatigueCfg().rest * 60 };
+  if (!restWin || restWin.isDestroyed()) {
+    createRestWindow();
+    restWin.webContents.once('did-finish-load', () => {
+      sendRestAsset();
+      restWin.webContents.send('rest:show', payload);
+      restWin.show();
+      restWin.focus();
+    });
+  } else {
+    sendRestAsset();
+    restWin.webContents.send('rest:show', payload);
+    restWin.show();
+    restWin.focus();
+  }
+}
+// 结束休息（点“好的”）→ 清零计时、恢复计时、关窗
+ipcMain.on('rest:ack', () => {
+  fatigueUseSeconds = 0;
+  restActive = false;
+  fatigueLastTick = Date.now();
+  if (restWin && !restWin.isDestroyed()) restWin.close();
+});
+
 function sendFatigueStatus() {
   if (settingsWin && !settingsWin.isDestroyed()) {
     settingsWin.webContents.send('panel:fatigueStatus', {
@@ -707,9 +804,11 @@ function fatigueTick() {
   fatigueLastTick = now;
   const cfg = getFatigueCfg();
   if (!cfg.enabled) { fatigueUseSeconds = 0; sendFatigueStatus(); return; }
+  if (restActive) { sendFatigueStatus(); return; } // 休息弹窗显示中：暂停计时
   const idle = powerMonitor.getSystemIdleTime(); // 秒
   if (idle >= cfg.idle * 60) fatigueUseSeconds = 0; // 长时间空闲 → 视为已休息，清零
   else fatigueUseSeconds += elapsed;
+  if (fatigueUseSeconds >= cfg.use * 60) showRest(Math.round(fatigueUseSeconds / 60)); // 到点弹休息提醒
   sendFatigueStatus();
 }
 function startFatigueTimer() {
