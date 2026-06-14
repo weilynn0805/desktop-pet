@@ -135,6 +135,26 @@ ipcMain.on('phrases:set', (_e, list) => {
   }
 });
 
+// ---- 定时主动冒泡配置（是否开启 + 间隔秒数）----
+function getAutoBubble() {
+  const s = store.read();
+  const interval = Number(s.autoBubbleInterval);
+  return {
+    enabled: s.autoBubbleEnabled !== false, // 默认开启
+    interval: Number.isFinite(interval) && interval > 0 ? interval : 25, // 默认 25 秒
+  };
+}
+ipcMain.handle('autobubble:get', () => getAutoBubble());
+ipcMain.on('autobubble:set', (_e, cfg) => {
+  let interval = Math.round(Number(cfg && cfg.interval));
+  if (!Number.isFinite(interval)) interval = 25;
+  interval = Math.min(3600, Math.max(3, interval)); // 限制 3~3600 秒
+  store.write({ autoBubbleEnabled: !!(cfg && cfg.enabled), autoBubbleInterval: interval });
+  if (petWin && !petWin.isDestroyed()) {
+    petWin.webContents.send('pet:autoBubbleChanged', getAutoBubble());
+  }
+});
+
 // 缩放：渲染层负责改 CSS transform，这里只读/存比例
 ipcMain.handle('pet:getScale', () => clampScale(store.read().petScale));
 ipcMain.on('pet:setScale', (_e, s) => store.write({ petScale: clampScale(s) }));

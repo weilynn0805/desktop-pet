@@ -220,15 +220,24 @@ window.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ---- 定时主动冒泡：宠物隔一会儿自己说句话，显示几秒后自动收起 ----
-const AUTO_INTERVAL = 25000; // 每隔多久冒一次(ms)
-const AUTO_VISIBLE = 4000;   // 每次显示时长(ms)
+const AUTO_VISIBLE = 4000; // 每次显示时长(ms)
+let autoTimer = null;      // 周期定时器
 function autoBubble() {
   if (dragging || interactive) return; // 正在拖动/悬停 → 不打扰，让位给悬停气泡
   showBubble();
   clearTimeout(autoHideTimer);
   autoHideTimer = setTimeout(hideBubble, AUTO_VISIBLE);
 }
-setInterval(autoBubble, AUTO_INTERVAL);
+// 按配置(开关+间隔秒数)重建定时器
+function applyAutoBubble(cfg) {
+  clearInterval(autoTimer);
+  autoTimer = null;
+  if (cfg.enabled && cfg.interval > 0) {
+    autoTimer = setInterval(autoBubble, cfg.interval * 1000);
+  }
+}
+window.petAPI.getAutoBubble().then(applyAutoBubble);
+window.petAPI.onAutoBubbleChanged(applyAutoBubble);
 
 // 单击反应：触发一次挤压动画
 function poke() {

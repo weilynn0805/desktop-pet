@@ -16,3 +16,23 @@ document.getElementById('save-phrases').addEventListener('click', () => {
   status.textContent = list.length ? `已保存 ${list.length} 条` : '已清空，恢复默认';
   setTimeout(() => { status.textContent = ''; }, 2000);
 });
+
+// 定时主动冒泡：载入开关 + 间隔
+const autoEnabled = document.getElementById('auto-enabled');
+const autoInterval = document.getElementById('auto-interval');
+window.panelAPI.getAutoBubble().then((cfg) => {
+  autoEnabled.checked = cfg.enabled;
+  autoInterval.value = cfg.interval;
+});
+
+// 保存定时冒泡配置（间隔限制 3~3600 秒，主进程也会再夹一次）
+document.getElementById('save-auto').addEventListener('click', () => {
+  let interval = Math.round(Number(autoInterval.value));
+  if (!Number.isFinite(interval)) interval = 25;
+  interval = Math.min(3600, Math.max(3, interval));
+  autoInterval.value = interval;
+  window.panelAPI.setAutoBubble({ enabled: autoEnabled.checked, interval });
+  const status = document.getElementById('auto-status');
+  status.textContent = autoEnabled.checked ? `已保存，每 ${interval} 秒` : '已关闭';
+  setTimeout(() => { status.textContent = ''; }, 2000);
+});

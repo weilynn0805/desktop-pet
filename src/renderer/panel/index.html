@@ -26,6 +26,18 @@
         <button id="save-phrases" class="btn">保存</button>
         <span id="phrases-status" class="muted"></span>
       </div>
+
+      <hr class="sep" />
+      <label class="check">
+        <input type="checkbox" id="auto-enabled" /> 定时主动冒泡
+      </label>
+      <div class="row">
+        <span class="muted">每隔</span>
+        <input type="number" id="auto-interval" class="num" min="3" max="3600" step="1" />
+        <span class="muted">秒说一句</span>
+        <button id="save-auto" class="btn">保存</button>
+        <span id="auto-status" class="muted"></span>
+      </div>
     </section>
 
     <!-- 行为 -->

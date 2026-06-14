@@ -6,4 +6,7 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 互动文案：读取 + 保存
   getPhrases: () => ipcRenderer.invoke('phrases:get'),
   setPhrases: (list) => ipcRenderer.send('phrases:set', list),
+  // 定时主动冒泡配置：读取 + 保存
+  getAutoBubble: () => ipcRenderer.invoke('autobubble:get'),
+  setAutoBubble: (cfg) => ipcRenderer.send('autobubble:set', cfg),
 });

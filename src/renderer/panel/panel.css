@@ -75,3 +75,29 @@ html, body {
 }
 .btn:hover { background: #6a72f0; }
 .btn:active { background: #5a62e0; }
+
+.sep {
+  margin: 14px 0 10px;
+  border: 0;
+  border-top: 1px solid #eceef1;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.check input { cursor: pointer; }
+
+.num {
+  width: 64px;
+  padding: 5px 8px;
+  border: 1px solid #d6d9dd;
+  border-radius: 8px;
+  font: 13px "Microsoft YaHei", system-ui, sans-serif;
+  text-align: center;
+  outline: none;
+}
+.num:focus { border-color: #7c84ff; }
