@@ -89,11 +89,28 @@ body.dragging { cursor: grabbing; }
   user-select: none;
 }
 
-/* 单击互动反应 */
-.pet.poke .body { animation: poke .4s ease; }
+/* 单击互动反应：动作作用到默认宠物(.body)与素材(.media) */
+.pet.poke   .body, .pet.poke   .media { animation: poke   .4s ease; }
+.pet.jump   .body, .pet.jump   .media { animation: jump   .5s ease; }
+.pet.wiggle .body, .pet.wiggle .media { animation: wiggle .5s ease; }
+
 @keyframes poke {
   0%   { transform: scale(1); }
   40%  { transform: scale(.8, 1.2); }
   70%  { transform: scale(1.15, .85); }
   100% { transform: scale(1); }
+}
+@keyframes jump {
+  0%   { transform: translateY(0); }
+  30%  { transform: translateY(-18px); }
+  55%  { transform: translateY(0); }
+  72%  { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-8deg); }
+  40% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  80% { transform: rotate(5deg); }
 }

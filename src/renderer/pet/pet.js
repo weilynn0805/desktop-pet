@@ -239,9 +239,33 @@ function applyAutoBubble(cfg) {
 window.petAPI.getAutoBubble().then(applyAutoBubble);
 window.petAPI.onAutoBubbleChanged(applyAutoBubble);
 
-// 单击反应：触发一次挤压动画
+// ---- 单击互动：随机动作动画 + 专属反应台词 ----
+const REACTIONS = [
+  '嘿嘿，好痒～',
+  '别戳啦 >_<',
+  '么么哒 (｡･ω･｡)',
+  '干嘛呀～',
+  '再戳我要害羞了',
+  '哎呀！',
+  '你戳到我啦',
+];
+const MOVES = ['poke', 'jump', 'wiggle']; // 三种动作动画，随机其一
+let moveTimer = null;                      // 动画结束后移除动作类，恢复待机弹跳
+
+function showReaction() {
+  if (!REACTIONS.length) return;
+  clearTimeout(autoHideTimer); // 反应台词常驻到鼠标离开，别被定时器收走
+  bubble.textContent = REACTIONS[Math.floor(Math.random() * REACTIONS.length)];
+  positionBubble();
+  bubble.classList.add('show');
+}
+
 function poke() {
-  pet.classList.remove('poke');
+  const move = MOVES[Math.floor(Math.random() * MOVES.length)];
+  pet.classList.remove(...MOVES);
   void pet.offsetWidth; // 强制重排以重置动画
-  pet.classList.add('poke');
+  pet.classList.add(move);
+  clearTimeout(moveTimer);
+  moveTimer = setTimeout(() => pet.classList.remove(move), 600); // 动画结束后复位
+  showReaction();
 }
