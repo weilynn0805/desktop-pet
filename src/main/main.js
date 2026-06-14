@@ -5,17 +5,25 @@ const fs = require('fs');
 const store = require('./store');
 const assets = require('./services/assets');
 
-const PET_SIZE = 200; // 宠物窗边长（含透明留白）
+const PET_SIZE = 200; // 宠物在缩放=1 时的边长
+const MIN_SCALE = 0.5, MAX_SCALE = 2.5; // 缩放范围
+// 窗口固定为最大尺寸：透明窗口在 Windows 上无法可靠 resize，故窗口不动，
+// 缩放只改窗口内宠物的 CSS transform。窗口够大以容纳放到最大的宠物。
+const WIN_SIZE = Math.round(PET_SIZE * MAX_SCALE);
+const MARGIN = Math.round((WIN_SIZE - PET_SIZE) / 2); // 宠物居中后四周的透明留白
 let petWin = null;
 
+const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s || 1));
+
 function createPetWindow() {
-  const saved = store.read().petPosition;
+  const saved = store.read();
+  const pos = saved.petPosition;
 
   const win = new BrowserWindow({
-    width: PET_SIZE,
-    height: PET_SIZE,
-    x: saved?.x,
-    y: saved?.y,
+    width: WIN_SIZE,
+    height: WIN_SIZE,
+    x: pos?.x,
+    y: pos?.y,
     transparent: true,    // 透明背景（去黑/白底）
     frame: false,         // 无边框
     alwaysOnTop: true,    // 置顶
@@ -38,12 +46,12 @@ function createPetWindow() {
   // 只有指针落在宠物不透明像素上时，渲染层才请求临时关闭穿透。
   win.setIgnoreMouseEvents(true, { forward: true });
 
-  // 首次启动（无记忆位置）→ 放到主屏右下角
-  if (!saved) {
+  // 首次启动（无记忆位置）→ 让“宠物本体”落在主屏右下角（扣掉透明留白）
+  if (!pos) {
     const { workArea } = screen.getPrimaryDisplay();
     win.setPosition(
-      Math.round(workArea.x + workArea.width - PET_SIZE - 40),
-      Math.round(workArea.y + workArea.height - PET_SIZE - 40)
+      Math.round(workArea.x + workArea.width - MARGIN - PET_SIZE - 40),
+      Math.round(workArea.y + workArea.height - MARGIN - PET_SIZE - 40)
     );
   }
   return win;
@@ -69,6 +77,10 @@ ipcMain.on('pet:savePosition', () => {
   const [x, y] = petWin.getPosition();
   store.write({ petPosition: { x, y } });
 });
+
+// 缩放：渲染层负责改 CSS transform，这里只读/存比例
+ipcMain.handle('pet:getScale', () => clampScale(store.read().petScale));
+ipcMain.on('pet:setScale', (_e, s) => store.write({ petScale: clampScale(s) }));
 
 // 渲染进程启动时获取当前素材（无则返回 null → 显示默认 CSS 宠物）
 ipcMain.handle('pet:getAsset', () => store.read().petAsset || null);

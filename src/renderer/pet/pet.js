@@ -139,6 +139,23 @@ window.addEventListener('mousemove', (e) => {
   setInteractive(overPet(e.clientX, e.clientY));
 });
 
+// ---- 滚轮缩放：固定窗口，只缩放窗口内的宠物（CSS transform）----
+const MIN_SCALE = 0.5, MAX_SCALE = 2.5;
+let scale = 1;
+function applyScale(s) {
+  scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+  pet.style.transform = `scale(${scale})`; // transform-origin 居中 → 不位移
+}
+window.petAPI.getScale().then(applyScale); // 启动时还原上次大小
+
+// 指针在宠物上时：上滚放大/下滚缩小。其余区域滚轮直接穿透给下层应用。
+window.addEventListener('wheel', (e) => {
+  if (!interactive) return;
+  e.preventDefault();                              // 阻止页面本身滚动
+  applyScale(e.deltaY < 0 ? scale * 1.1 : scale / 1.1);
+  window.petAPI.setScale(scale);                   // 持久化
+}, { passive: false });
+
 // 单击反应：触发一次挤压动画
 function poke() {
   pet.classList.remove('poke');

@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('petAPI', {
   savePosition: () => ipcRenderer.send('pet:savePosition'),
   showMenu: () => ipcRenderer.send('pet:showMenu'),
   setInteractive: (on) => ipcRenderer.send('pet:setInteractive', on),
+  getScale: () => ipcRenderer.invoke('pet:getScale'),
+  setScale: (s) => ipcRenderer.send('pet:setScale', s),
   getAsset: () => ipcRenderer.invoke('pet:getAsset'),
   // 素材变化时主进程主动推送（选择/恢复默认）
   onAssetChanged: (cb) => ipcRenderer.on('pet:assetChanged', (_e, asset) => cb(asset)),

@@ -6,6 +6,12 @@ html, body {
   user-select: none;
   cursor: grab;
 }
+/* 窗口固定为最大尺寸，宠物居中显示，四周透明留白用于放大空间 */
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 body.dragging { cursor: grabbing; }
 
 .pet {
@@ -14,6 +20,8 @@ body.dragging { cursor: grabbing; }
   display: flex;
   align-items: center;
   justify-content: center;
+  transform-origin: center center;     /* 缩放以中心为锚点 → 不位移 */
+  transition: transform .08s ease-out; /* 滚轮缩放更顺滑 */
 }
 
 .body {
