@@ -11,20 +11,26 @@
   </header>
 
   <main class="content">
-    <!-- 形象与素材 -->
+    <!-- 形象与素材（多素材 + 轮播）-->
     <section class="card">
       <h2>形象与素材</h2>
-      <div class="asset">
-        <div class="thumb empty" id="asset-thumb"></div>
-        <div class="asset-info">
-          <div class="asset-name" id="asset-name">默认形象</div>
-          <div class="muted" id="asset-type"></div>
-        </div>
-      </div>
+      <p class="muted">可添加多个素材；2 个及以上时按下方间隔轮播。无素材则显示默认形象。</p>
+      <div id="asset-list" class="asset-list"></div>
       <div class="row">
-        <button id="pick-asset" class="btn">选择素材…</button>
-        <button id="reset-asset" class="btn btn-ghost">恢复默认</button>
+        <button id="add-asset" class="btn">添加素材…</button>
+        <button id="next-asset" class="btn btn-ghost">切换到下一个</button>
       </div>
+
+      <hr class="sep" />
+      <h3 class="subhead">轮播间隔</h3>
+      <div class="row">
+        <span class="muted">每隔</span>
+        <input type="number" id="rotate-min" class="num" min="5" max="60" step="1" />
+        <span class="muted">分钟换一个</span>
+        <button id="save-rotate" class="btn">保存</button>
+        <span id="rotate-status" class="muted"></span>
+      </div>
+      <p class="muted" id="rotate-hint"></p>
       <p class="muted">支持透明 PNG / GIF / APNG / WebP 与 WebM；无透明通道的视频会带矩形背景。</p>
     </section>
 

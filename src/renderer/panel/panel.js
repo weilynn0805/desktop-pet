@@ -4,38 +4,84 @@ window.panelAPI.getInfo().then((info) => {
     `桌面宠物 v${info.version} ｜ Electron ${info.electron} ｜ ${info.platform}`;
 });
 
-// ---- 形象与素材 ----
-const assetThumb = document.getElementById('asset-thumb');
-const assetName = document.getElementById('asset-name');
-const assetType = document.getElementById('asset-type');
+// ---- 形象与素材（多素材 + 轮播）----
+const assetListEl = document.getElementById('asset-list');
+const rotateMin = document.getElementById('rotate-min');
+const rotateHint = document.getElementById('rotate-hint');
 
 function toFileURL(p) { return 'file:///' + encodeURI(p.replace(/\\/g, '/')); }
 
-function renderAsset(asset) {
-  assetThumb.innerHTML = '';
-  if (!asset) { // 默认 CSS 宠物
-    assetThumb.classList.add('empty');
-    assetName.textContent = '默认形象';
-    assetType.textContent = '内置 CSS 宠物';
-    return;
+// 列表渲染：每项 = 缩略图 + 文件名/类型 + 删除按钮；空列表给默认形象提示
+function renderAssets(list) {
+  assetListEl.innerHTML = '';
+  if (!list.length) {
+    const empty = document.createElement('div');
+    empty.className = 'muted';
+    empty.textContent = '（无素材，当前显示默认形象 🐾）';
+    assetListEl.appendChild(empty);
+  } else {
+    list.forEach((asset, i) => {
+      const item = document.createElement('div');
+      item.className = 'asset-item';
+
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      const el = document.createElement(asset.type === 'video' ? 'video' : 'img');
+      el.src = toFileURL(asset.path);
+      if (asset.type === 'video') { el.muted = el.loop = el.autoplay = true; }
+      thumb.appendChild(el);
+
+      const info = document.createElement('div');
+      info.className = 'asset-info';
+      const name = document.createElement('div');
+      name.className = 'asset-name';
+      name.textContent = asset.path.split(/[\\/]/).pop();
+      const type = document.createElement('div');
+      type.className = 'muted';
+      type.textContent = asset.type === 'video' ? '视频' : '图片';
+      info.appendChild(name);
+      info.appendChild(type);
+
+      const del = document.createElement('button');
+      del.className = 'btn btn-ghost';
+      del.textContent = '删除';
+      del.addEventListener('click', async () => {
+        renderAssets(await window.panelAPI.removeAsset(i));
+      });
+
+      item.appendChild(thumb);
+      item.appendChild(info);
+      item.appendChild(del);
+      assetListEl.appendChild(item);
+    });
   }
-  assetThumb.classList.remove('empty');
-  assetName.textContent = asset.path.split(/[\\/]/).pop(); // 文件名
-  assetType.textContent = asset.type === 'video' ? '视频' : '图片';
-  const el = document.createElement(asset.type === 'video' ? 'video' : 'img');
-  el.src = toFileURL(asset.path);
-  if (asset.type === 'video') { el.muted = el.loop = el.autoplay = true; }
-  assetThumb.appendChild(el);
+  // 轮播仅在 ≥2 个素材时生效
+  const n = list.length;
+  rotateMin.disabled = n < 2;
+  rotateHint.textContent = n >= 2 ? '' : `当前 ${n} 个素材，轮播需 2 个及以上才生效。`;
 }
 
-window.panelAPI.getAsset().then(renderAsset);
-window.panelAPI.onAssetChanged(renderAsset); // 右键菜单换素材时也同步
+window.panelAPI.getAssets().then(renderAssets);
+window.panelAPI.onAssetsChanged(renderAssets); // 右键菜单增删素材时同步
 
-document.getElementById('pick-asset').addEventListener('click', async () => {
-  renderAsset(await window.panelAPI.pickAsset());
+document.getElementById('add-asset').addEventListener('click', async () => {
+  renderAssets(await window.panelAPI.addAsset());
 });
-document.getElementById('reset-asset').addEventListener('click', async () => {
-  renderAsset(await window.panelAPI.resetAsset());
+document.getElementById('next-asset').addEventListener('click', () => {
+  window.panelAPI.nextAsset(); // 即时切到下一个，便于验证轮播
+});
+
+// 轮播间隔（分钟，5~60）
+window.panelAPI.getRotate().then(({ minutes }) => { rotateMin.value = minutes; });
+document.getElementById('save-rotate').addEventListener('click', () => {
+  let m = Math.round(Number(rotateMin.value));
+  if (!Number.isFinite(m)) m = 5;
+  m = Math.min(60, Math.max(5, m));
+  rotateMin.value = m;
+  window.panelAPI.setRotate(m);
+  const st = document.getElementById('rotate-status');
+  st.textContent = `已保存，每 ${m} 分钟`;
+  setTimeout(() => { st.textContent = ''; }, 2000);
 });
 
 // 互动文案：载入到文本框（每行一句）

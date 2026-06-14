@@ -87,6 +87,7 @@ function openSettings() {
 
 app.whenReady().then(() => {
   petWin = createPetWindow();
+  petWin.webContents.once('did-finish-load', startRotation); // 窗口就绪后启动轮播定时器
 });
 
 // 渲染进程在拖动开始时获取窗口当前位置（用于计算位移）
@@ -227,79 +228,145 @@ ipcMain.on('paused:set', (_e, on) => setPaused(on));
 // 双击宠物 → 打开设置面板（与右键菜单同一入口）
 ipcMain.on('pet:openPanel', () => openSettings());
 
-// 渲染进程启动时获取当前素材（无则返回 null → 显示默认 CSS 宠物）
-ipcMain.handle('pet:getAsset', () => store.read().petAsset || null);
+// 渲染进程启动时获取当前应显示的素材（无则返回 null → 显示默认 CSS 宠物）
+ipcMain.handle('pet:getAsset', () => {
+  const list = getAssets();
+  return list.length ? list[Math.min(rotateIndex, list.length - 1)] : null;
+});
 
 // 渲染层根据指针是否在宠物上，开/关鼠标穿透
 ipcMain.on('pet:setInteractive', (_e, interactive) => {
   petWin.setIgnoreMouseEvents(!interactive, { forward: true });
 });
 
-// 素材变更统一出口：持久化 + 同时通知宠物窗与设置窗刷新
-function applyAsset(asset) {
-  store.write({ petAsset: asset });
-  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:assetChanged', asset);
-  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('panel:assetChanged', asset);
+// ---- 多素材 + 轮播（数据：petAssets 数组；定时器集中在主进程）----
+// 读取素材列表（兼容旧版单素材 petAsset → 自动迁移为单元素数组）
+function getAssets() {
+  const s = store.read();
+  if (Array.isArray(s.petAssets)) return s.petAssets.slice();
+  if (s.petAsset) return [s.petAsset];
+  return [];
+}
+// 轮播间隔（分钟）：PRD §6.1 限制 5~60，默认 5
+function getRotateMinutes() {
+  const m = Number(store.read().petRotateMinutes);
+  return Number.isFinite(m) && m >= 5 ? Math.min(60, Math.round(m)) : 5;
+}
+// 保存素材列表 → 清掉旧字段 → 通知面板 → 重建轮播
+function saveAssets(list) {
+  store.write({ petAssets: list, petAsset: null });
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.webContents.send('panel:assetsChanged', getAssets());
+  }
+  startRotation();
 }
 
-// 选择素材：弹文件对话框 → 复制进本地目录 → 持久化 → 通知刷新。
-// parentWin 决定对话框归属（右键菜单=宠物窗，面板按钮=设置窗）。返回最终素材(取消则保持原样)。
-function pickAsset(parentWin) {
+let rotateTimer = null;
+let rotateIndex = 0;
+// 把第 i 个素材推给宠物窗（越界自动取模；空列表 → null=默认形象）
+function showAssetAt(i) {
+  const list = getAssets();
+  const asset = list.length ? list[((i % list.length) + list.length) % list.length] : null;
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:assetChanged', asset);
+}
+// 重建轮播：立即显示第一个；仅当 ≥2 个素材时启动定时切换
+function startRotation() {
+  clearInterval(rotateTimer);
+  rotateTimer = null;
+  rotateIndex = 0;
+  showAssetAt(0);
+  const list = getAssets();
+  if (list.length >= 2) {
+    rotateTimer = setInterval(() => {
+      const n = getAssets().length;
+      if (n < 2) return;
+      rotateIndex = (rotateIndex + 1) % n;
+      showAssetAt(rotateIndex);
+    }, getRotateMinutes() * 60 * 1000);
+  }
+}
+// 手动切到下一个（面板“切换到下一个”按钮，便于即时验证轮播）
+function rotateNext() {
+  const list = getAssets();
+  if (!list.length) return null;
+  rotateIndex = (rotateIndex + 1) % list.length;
+  showAssetAt(rotateIndex);
+  return list[rotateIndex];
+}
+
+// 添加素材：可多选；统一类型校验 + 无 alpha 批量警告一次；返回新列表。
+function addAssets(parentWin) {
   const owner = parentWin && !parentWin.isDestroyed() ? parentWin : petWin;
-  const current = store.read().petAsset || null;
   const result = dialog.showOpenDialogSync(owner, {
-    title: '选择宠物素材',
-    properties: ['openFile'],
+    title: '添加宠物素材（可多选）',
+    properties: ['openFile', 'multiSelections'],
     filters: [
       { name: '宠物素材（图片/动图/视频）', extensions: assets.PICK_EXTENSIONS },
       { name: '所有文件', extensions: ['*'] },
     ],
   });
-  if (!result || !result[0]) return current; // 用户取消
-  const asset = assets.importAsset(result[0]);
-  if (!asset) {
+  if (!result || !result.length) return getAssets(); // 取消
+
+  const valid = result.filter((f) => assets.detectType(f));
+  if (!valid.length) {
     dialog.showMessageBox(owner, {
       type: 'warning',
       message: '不支持的素材格式',
       detail: '支持：png/apng/gif/webp/jpg 与 mp4/webm/mov/m4v。',
     });
-    return current;
+    return getAssets();
   }
 
-  // 无 alpha 通道的格式（mp4/mov/jpg…）会带矩形背景，无法只显示主体 → 警告并让用户确认
-  if (!assets.supportsAlpha(asset.path)) {
+  // 无 alpha 通道的格式会带矩形背景 → 整批确认一次
+  const noAlpha = valid.filter((f) => !assets.supportsAlpha(f));
+  if (noAlpha.length) {
     const choice = dialog.showMessageBoxSync(owner, {
       type: 'warning',
-      buttons: ['仍然使用', '取消'],
+      buttons: ['仍然添加', '取消'],
       defaultId: 1,
       cancelId: 1,
-      message: '该格式无法透明显示',
+      message: noAlpha.length === valid.length ? '所选素材无透明通道' : '部分素材无透明通道',
       detail:
-        '这个素材没有透明通道，会带矩形背景显示，无法只显示主体轮廓。\n\n' +
+        '无透明通道的素材会带矩形背景显示，无法只显示主体轮廓。\n\n' +
         '想要“悬浮只显示主体”，请改用：\n' +
         '· 透明 GIF / APNG / PNG（动图/图片，最常见、效果最好）\n' +
         '· WebM（VP9 alpha）透明视频',
     });
-    if (choice === 1) {
-      fs.unlinkSync(asset.path); // 用户取消 → 删除刚复制进来的文件，不留垃圾
-      return current;
-    }
+    if (choice === 1) return getAssets(); // 取消整批
   }
 
-  applyAsset(asset);
-  return asset;
+  const list = getAssets();
+  for (const f of valid) {
+    const a = assets.importAsset(f);
+    if (a) list.push(a);
+  }
+  saveAssets(list);
+  return list;
 }
 
-// 恢复默认形象：清除素材配置 → 回到 CSS 宠物
-function resetAsset() {
-  applyAsset(null);
-  return null;
+// 删除第 index 个素材：从磁盘删文件 + 从列表移除 → 返回新列表
+function removeAsset(index) {
+  const list = getAssets();
+  if (index < 0 || index >= list.length) return list;
+  const [removed] = list.splice(index, 1);
+  try { if (removed && removed.path) fs.unlinkSync(removed.path); } catch {}
+  saveAssets(list);
+  return list;
 }
 
 // 设置面板的素材读写
-ipcMain.handle('asset:get', () => store.read().petAsset || null);
-ipcMain.handle('asset:pick', () => pickAsset(settingsWin));
-ipcMain.handle('asset:reset', () => resetAsset());
+ipcMain.handle('assets:list', () => getAssets());
+ipcMain.handle('assets:add', () => addAssets(settingsWin));
+ipcMain.handle('assets:remove', (_e, index) => removeAsset(index));
+ipcMain.handle('assets:next', () => rotateNext());
+ipcMain.handle('rotate:get', () => ({ minutes: getRotateMinutes() }));
+ipcMain.on('rotate:set', (_e, minutes) => {
+  let m = Math.round(Number(minutes));
+  if (!Number.isFinite(m)) m = 5;
+  m = Math.min(60, Math.max(5, m));
+  store.write({ petRotateMinutes: m });
+  startRotation(); // 间隔变了 → 重建定时器
+});
 
 // 右键菜单（退出只走这里，避免误触）
 ipcMain.on('pet:showMenu', () => {
@@ -308,8 +375,8 @@ ipcMain.on('pet:showMenu', () => {
     { label: '打开面板...', click: openSettings },
     { label: paused ? '恢复宠物' : '暂停宠物', click: () => setPaused(!paused) },
     { type: 'separator' },
-    { label: '选择素材...', click: () => pickAsset(petWin) },
-    { label: '恢复默认形象', click: resetAsset },
+    { label: '添加素材...', click: () => addAssets(petWin) },
+    { label: '清空素材（恢复默认形象）', click: () => saveAssets([]) },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() },
   ]);

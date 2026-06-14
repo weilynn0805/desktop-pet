@@ -15,11 +15,15 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),
-  // 形象与素材：读取 / 选择 / 恢复默认 / 监听变更
-  getAsset: () => ipcRenderer.invoke('asset:get'),
-  pickAsset: () => ipcRenderer.invoke('asset:pick'),
-  resetAsset: () => ipcRenderer.invoke('asset:reset'),
-  onAssetChanged: (cb) => ipcRenderer.on('panel:assetChanged', (_e, asset) => cb(asset)),
+  // 形象与素材（多素材 + 轮播）：列表 / 添加 / 删除 / 手动下一个 / 监听变更
+  getAssets: () => ipcRenderer.invoke('assets:list'),
+  addAsset: () => ipcRenderer.invoke('assets:add'),
+  removeAsset: (i) => ipcRenderer.invoke('assets:remove', i),
+  nextAsset: () => ipcRenderer.invoke('assets:next'),
+  onAssetsChanged: (cb) => ipcRenderer.on('panel:assetsChanged', (_e, list) => cb(list)),
+  // 轮播间隔（分钟）：读取 / 保存
+  getRotate: () => ipcRenderer.invoke('rotate:get'),
+  setRotate: (m) => ipcRenderer.send('rotate:set', m),
   // 行为：置顶 / 缩放 / 退出
   getAlwaysOnTop: () => ipcRenderer.invoke('alwaysontop:get'),
   setAlwaysOnTop: (on) => ipcRenderer.send('alwaysontop:set', on),

@@ -138,11 +138,32 @@ html, body {
 .thumb.empty { background: #f0f1f3; }
 .thumb.empty::after { content: "🐾"; font-size: 24px; filter: grayscale(.2); }
 
-.asset-info { min-width: 0; }
+.asset-info { min-width: 0; flex: 1; }
 .asset-name {
   font-size: 13px;
   font-weight: 600;
   word-break: break-all;
+}
+
+/* 多素材列表 */
+.asset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.asset-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #e6e8eb;
+  border-radius: 8px;
+}
+.asset-item .thumb {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
 }
 
 .btn-ghost {
