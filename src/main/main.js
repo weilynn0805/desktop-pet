@@ -178,9 +178,19 @@ ipcMain.on('pet:setInteractive', (_e, interactive) => {
   petWin.setIgnoreMouseEvents(!interactive, { forward: true });
 });
 
-// 选择素材：弹文件对话框 → 复制进本地目录 → 持久化 → 通知渲染进程热更新
-function pickAsset() {
-  const result = dialog.showOpenDialogSync(petWin, {
+// 素材变更统一出口：持久化 + 同时通知宠物窗与设置窗刷新
+function applyAsset(asset) {
+  store.write({ petAsset: asset });
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:assetChanged', asset);
+  if (settingsWin && !settingsWin.isDestroyed()) settingsWin.webContents.send('panel:assetChanged', asset);
+}
+
+// 选择素材：弹文件对话框 → 复制进本地目录 → 持久化 → 通知刷新。
+// parentWin 决定对话框归属（右键菜单=宠物窗，面板按钮=设置窗）。返回最终素材(取消则保持原样)。
+function pickAsset(parentWin) {
+  const owner = parentWin && !parentWin.isDestroyed() ? parentWin : petWin;
+  const current = store.read().petAsset || null;
+  const result = dialog.showOpenDialogSync(owner, {
     title: '选择宠物素材',
     properties: ['openFile'],
     filters: [
@@ -188,20 +198,20 @@ function pickAsset() {
       { name: '所有文件', extensions: ['*'] },
     ],
   });
-  if (!result || !result[0]) return; // 用户取消
+  if (!result || !result[0]) return current; // 用户取消
   const asset = assets.importAsset(result[0]);
   if (!asset) {
-    dialog.showMessageBox(petWin, {
+    dialog.showMessageBox(owner, {
       type: 'warning',
       message: '不支持的素材格式',
       detail: '支持：png/apng/gif/webp/jpg 与 mp4/webm/mov/m4v。',
     });
-    return;
+    return current;
   }
 
   // 无 alpha 通道的格式（mp4/mov/jpg…）会带矩形背景，无法只显示主体 → 警告并让用户确认
   if (!assets.supportsAlpha(asset.path)) {
-    const choice = dialog.showMessageBoxSync(petWin, {
+    const choice = dialog.showMessageBoxSync(owner, {
       type: 'warning',
       buttons: ['仍然使用', '取消'],
       defaultId: 1,
@@ -215,24 +225,29 @@ function pickAsset() {
     });
     if (choice === 1) {
       fs.unlinkSync(asset.path); // 用户取消 → 删除刚复制进来的文件，不留垃圾
-      return;
+      return current;
     }
   }
 
-  store.write({ petAsset: asset });
-  petWin.webContents.send('pet:assetChanged', asset);
+  applyAsset(asset);
+  return asset;
 }
 
 // 恢复默认形象：清除素材配置 → 回到 CSS 宠物
 function resetAsset() {
-  store.write({ petAsset: null });
-  petWin.webContents.send('pet:assetChanged', null);
+  applyAsset(null);
+  return null;
 }
+
+// 设置面板的素材读写
+ipcMain.handle('asset:get', () => store.read().petAsset || null);
+ipcMain.handle('asset:pick', () => pickAsset(settingsWin));
+ipcMain.handle('asset:reset', () => resetAsset());
 
 // 右键菜单（退出只走这里，避免误触）
 ipcMain.on('pet:showMenu', () => {
   const menu = Menu.buildFromTemplate([
-    { label: '选择素材...', click: pickAsset },
+    { label: '选择素材...', click: () => pickAsset(petWin) },
     { label: '恢复默认形象', click: resetAsset },
     { type: 'separator' },
     { label: '打开设置...', click: openSettings },

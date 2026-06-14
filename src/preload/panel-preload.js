@@ -12,4 +12,9 @@ contextBridge.exposeInMainWorld('panelAPI', {
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),
+  // 形象与素材：读取 / 选择 / 恢复默认 / 监听变更
+  getAsset: () => ipcRenderer.invoke('asset:get'),
+  pickAsset: () => ipcRenderer.invoke('asset:pick'),
+  resetAsset: () => ipcRenderer.invoke('asset:reset'),
+  onAssetChanged: (cb) => ipcRenderer.on('panel:assetChanged', (_e, asset) => cb(asset)),
 });

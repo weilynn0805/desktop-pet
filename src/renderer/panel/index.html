@@ -14,7 +14,18 @@
     <!-- 形象与素材 -->
     <section class="card">
       <h2>形象与素材</h2>
-      <p class="muted">选择/恢复宠物形象（后续接入）。</p>
+      <div class="asset">
+        <div class="thumb empty" id="asset-thumb"></div>
+        <div class="asset-info">
+          <div class="asset-name" id="asset-name">默认形象</div>
+          <div class="muted" id="asset-type"></div>
+        </div>
+      </div>
+      <div class="row">
+        <button id="pick-asset" class="btn">选择素材…</button>
+        <button id="reset-asset" class="btn btn-ghost">恢复默认</button>
+      </div>
+      <p class="muted">支持透明 PNG / GIF / APNG / WebP 与 WebM；无透明通道的视频会带矩形背景。</p>
     </section>
 
     <!-- 互动文案 -->

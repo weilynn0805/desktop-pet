@@ -4,6 +4,40 @@ window.panelAPI.getInfo().then((info) => {
     `桌面宠物 v${info.version} ｜ Electron ${info.electron} ｜ ${info.platform}`;
 });
 
+// ---- 形象与素材 ----
+const assetThumb = document.getElementById('asset-thumb');
+const assetName = document.getElementById('asset-name');
+const assetType = document.getElementById('asset-type');
+
+function toFileURL(p) { return 'file:///' + encodeURI(p.replace(/\\/g, '/')); }
+
+function renderAsset(asset) {
+  assetThumb.innerHTML = '';
+  if (!asset) { // 默认 CSS 宠物
+    assetThumb.classList.add('empty');
+    assetName.textContent = '默认形象';
+    assetType.textContent = '内置 CSS 宠物';
+    return;
+  }
+  assetThumb.classList.remove('empty');
+  assetName.textContent = asset.path.split(/[\\/]/).pop(); // 文件名
+  assetType.textContent = asset.type === 'video' ? '视频' : '图片';
+  const el = document.createElement(asset.type === 'video' ? 'video' : 'img');
+  el.src = toFileURL(asset.path);
+  if (asset.type === 'video') { el.muted = el.loop = el.autoplay = true; }
+  assetThumb.appendChild(el);
+}
+
+window.panelAPI.getAsset().then(renderAsset);
+window.panelAPI.onAssetChanged(renderAsset); // 右键菜单换素材时也同步
+
+document.getElementById('pick-asset').addEventListener('click', async () => {
+  renderAsset(await window.panelAPI.pickAsset());
+});
+document.getElementById('reset-asset').addEventListener('click', async () => {
+  renderAsset(await window.panelAPI.resetAsset());
+});
+
 // 互动文案：载入到文本框（每行一句）
 const ta = document.getElementById('phrases');
 window.panelAPI.getPhrases().then((list) => { ta.value = list.join('\n'); });
