@@ -209,6 +209,7 @@ function applyScale(s) {
   pet.style.transform = `scale(${scale})`; // transform-origin 居中 → 不位移
 }
 window.petAPI.getScale().then(applyScale); // 启动时还原上次大小
+window.petAPI.onScaleChanged(applyScale);  // 设置面板重置缩放时套用
 
 // 指针在宠物上时：上滚放大/下滚缩小。其余区域滚轮直接穿透给下层应用。
 window.addEventListener('wheel', (e) => {

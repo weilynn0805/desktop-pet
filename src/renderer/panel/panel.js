@@ -92,3 +92,19 @@ autoLaunch.addEventListener('change', () => {
     ? '已开启：登录系统后自动运行。'
     : '已关闭：不再随系统启动。';
 });
+
+// 行为 · 窗口置顶：载入状态，切换即时生效
+const alwaysTop = document.getElementById('always-top');
+window.panelAPI.getAlwaysOnTop().then((on) => { alwaysTop.checked = on; });
+alwaysTop.addEventListener('change', () => window.panelAPI.setAlwaysOnTop(alwaysTop.checked));
+
+// 行为 · 缩放：显示当前比例，一键重置 100%
+const scaleVal = document.getElementById('scale-val');
+const showScale = (s) => { scaleVal.textContent = Math.round(s * 100) + '%'; };
+window.panelAPI.getScale().then(showScale);
+document.getElementById('reset-scale').addEventListener('click', async () => {
+  showScale(await window.panelAPI.resetScale());
+});
+
+// 行为 · 退出应用
+document.getElementById('quit-app').addEventListener('click', () => window.panelAPI.quitApp());

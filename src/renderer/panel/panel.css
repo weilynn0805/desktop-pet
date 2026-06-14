@@ -151,3 +151,10 @@ html, body {
 }
 .btn-ghost:hover { background: #e3e6ea; }
 .btn-ghost:active { background: #d8dbe0; }
+
+.btn-danger {
+  background: #f04b4b;
+  color: #fff;
+}
+.btn-danger:hover { background: #e23d3d; }
+.btn-danger:active { background: #d23333; }

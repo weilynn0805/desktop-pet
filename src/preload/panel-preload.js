@@ -20,4 +20,10 @@ contextBridge.exposeInMainWorld('panelAPI', {
   pickAsset: () => ipcRenderer.invoke('asset:pick'),
   resetAsset: () => ipcRenderer.invoke('asset:reset'),
   onAssetChanged: (cb) => ipcRenderer.on('panel:assetChanged', (_e, asset) => cb(asset)),
+  // 行为：置顶 / 缩放 / 退出
+  getAlwaysOnTop: () => ipcRenderer.invoke('alwaysontop:get'),
+  setAlwaysOnTop: (on) => ipcRenderer.send('alwaysontop:set', on),
+  getScale: () => ipcRenderer.invoke('pet:getScale'),
+  resetScale: () => ipcRenderer.invoke('scale:reset'),
+  quitApp: () => ipcRenderer.send('app:quit'),
 });

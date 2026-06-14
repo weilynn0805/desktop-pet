@@ -19,6 +19,7 @@ const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s || 1));
 function createPetWindow() {
   const saved = store.read();
   const pos = saved.petPosition;
+  const onTop = saved.petAlwaysOnTop !== false; // 默认置顶
 
   const win = new BrowserWindow({
     width: WIN_SIZE,
@@ -27,7 +28,7 @@ function createPetWindow() {
     y: pos?.y,
     transparent: true,    // 透明背景（去黑/白底）
     frame: false,         // 无边框
-    alwaysOnTop: true,    // 置顶
+    alwaysOnTop: onTop,   // 置顶（可在设置面板关闭）
     skipTaskbar: true,    // 不在任务栏显示
     resizable: false,
     hasShadow: false,
@@ -40,7 +41,7 @@ function createPetWindow() {
     },
   });
 
-  win.setAlwaysOnTop(true, 'screen-saver'); // 提升到更高置顶层级
+  if (onTop) win.setAlwaysOnTop(true, 'screen-saver'); // 提升到更高置顶层级
   win.loadFile(path.join(__dirname, '../renderer/pet/index.html'));
 
   // 默认整窗鼠标穿透（forward:true 仍转发 mousemove，供渲染层判断指针是否在宠物上）。
@@ -192,6 +193,25 @@ ipcMain.on('autobubble:set', (_e, cfg) => {
 // 缩放：渲染层负责改 CSS transform，这里只读/存比例
 ipcMain.handle('pet:getScale', () => clampScale(store.read().petScale));
 ipcMain.on('pet:setScale', (_e, s) => store.write({ petScale: clampScale(s) }));
+// 缩放重置为 1：写库并通知宠物窗套用
+ipcMain.handle('scale:reset', () => {
+  store.write({ petScale: 1 });
+  if (petWin && !petWin.isDestroyed()) petWin.webContents.send('pet:scaleChanged', 1);
+  return 1;
+});
+
+// 窗口置顶（持久化，默认开启）
+ipcMain.handle('alwaysontop:get', () => store.read().petAlwaysOnTop !== false);
+ipcMain.on('alwaysontop:set', (_e, on) => {
+  store.write({ petAlwaysOnTop: !!on });
+  if (petWin && !petWin.isDestroyed()) {
+    if (on) petWin.setAlwaysOnTop(true, 'screen-saver');
+    else petWin.setAlwaysOnTop(false);
+  }
+});
+
+// 退出应用
+ipcMain.on('app:quit', () => app.quit());
 
 // 渲染进程启动时获取当前素材（无则返回 null → 显示默认 CSS 宠物）
 ipcMain.handle('pet:getAsset', () => store.read().petAsset || null);
