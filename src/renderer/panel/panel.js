@@ -190,7 +190,18 @@ const remSave = document.getElementById('rem-save');
 const remCancel = document.getElementById('rem-cancel');
 const remStatus = document.getElementById('rem-status');
 const remFormTitle = document.getElementById('reminder-form-title');
-let editingId = null; // 正在编辑的提醒 id（null = 新增模式）
+const remSound = document.getElementById('rem-sound');
+const remTest = document.getElementById('rem-test');
+const remSoundCustom = document.getElementById('rem-sound-custom');
+const remPickSound = document.getElementById('rem-pick-sound');
+const remSoundName = document.getElementById('rem-sound-name');
+let editingId = null;       // 正在编辑的提醒 id（null = 新增模式）
+let customSound = null;     // 自定义提示音 {path,name}（仅 sound=custom 时有效）
+
+// 仅当选“自定义”时显示选文件那一行
+function syncSoundUI() {
+  remSoundCustom.style.display = remSound.value === 'custom' ? '' : 'none';
+}
 
 // 'YYYY-MM-DDTHH:mm' → 易读展示
 function fmtTime(dt) {
@@ -219,7 +230,8 @@ function renderReminders(list) {
     top.textContent = r.text || '(无文案)';
     const sub = document.createElement('div');
     sub.className = 'muted';
-    sub.textContent = `${fmtTime(r.datetime)} · ${REPEAT_LABEL[r.repeat] || '单次'}${r.enabled ? '' : ' · 已停用'}`;
+    const soundLabel = (window.SOUND_LABELS && window.SOUND_LABELS[r.sound]) || '叮';
+    sub.textContent = `${fmtTime(r.datetime)} · ${REPEAT_LABEL[r.repeat] || '单次'} · 🔔${soundLabel}${r.enabled ? '' : ' · 已停用'}`;
     info.appendChild(top);
     info.appendChild(sub);
 
@@ -256,6 +268,10 @@ function startEdit(r) {
   remTime.value = r.datetime || '';
   remText.value = r.text || '';
   remRepeat.value = r.repeat || 'single';
+  remSound.value = r.sound || 'ding';
+  customSound = r.sound === 'custom' && r.soundSrc ? { path: r.soundSrc, name: '（已选择）' } : null;
+  remSoundName.textContent = customSound ? customSound.name : '未选择';
+  syncSoundUI();
   remFormTitle.textContent = '编辑提醒';
   remSave.textContent = '保存修改';
   remCancel.style.display = '';
@@ -267,6 +283,10 @@ function resetForm() {
   remTime.value = '';
   remText.value = '';
   remRepeat.value = 'single';
+  remSound.value = 'ding';
+  customSound = null;
+  remSoundName.textContent = '未选择';
+  syncSoundUI();
   remFormTitle.textContent = '添加提醒';
   remSave.textContent = '保存提醒';
   remCancel.style.display = 'none';
@@ -287,7 +307,11 @@ remSave.addEventListener('click', async () => {
   if (repeat === 'single' && new Date(datetime).getTime() <= Date.now()) {
     flashStatus('单次提醒不能设在过去时间'); return;
   }
-  const data = { text, datetime, repeat };
+  const sound = remSound.value;
+  if (sound === 'custom' && !(customSound && customSound.path)) {
+    flashStatus('请选择自定义音频'); return;
+  }
+  const data = { text, datetime, repeat, sound, soundSrc: sound === 'custom' ? customSound.path : '' };
   const list = editingId
     ? await window.panelAPI.updateReminder(editingId, data)
     : await window.panelAPI.addReminder(data);
@@ -297,6 +321,59 @@ remSave.addEventListener('click', async () => {
 });
 
 remCancel.addEventListener('click', resetForm);
+
+// 提示音：切换显隐自定义行；选文件；试听
+remSound.addEventListener('change', syncSoundUI);
+remPickSound.addEventListener('click', async () => {
+  const picked = await window.panelAPI.pickSound();
+  if (picked && picked.path) {
+    customSound = picked;
+    remSoundName.textContent = picked.name || '（已选择）';
+  }
+});
+remTest.addEventListener('click', () => {
+  window.playReminderSound(remSound.value, customSound && customSound.path);
+});
+
+// ---- 提醒形象：头像（上传后固定）+ 名称 ----
+const ridAvatar = document.getElementById('rid-avatar');
+const ridName = document.getElementById('rid-name');
+const ridPreview = document.getElementById('rid-preview');
+const ridStatus = document.getElementById('rid-status');
+
+function renderRidAvatar(p) {
+  ridAvatar.innerHTML = '';
+  if (p) {
+    ridAvatar.classList.remove('empty');
+    const img = document.createElement('img');
+    img.src = toFileURL(p);
+    ridAvatar.appendChild(img);
+  } else {
+    ridAvatar.classList.add('empty'); // 🐾 占位 = 跟随当前形象
+  }
+}
+function flashRid(msg) { ridStatus.textContent = msg; setTimeout(() => { ridStatus.textContent = ''; }, 2000); }
+
+window.panelAPI.getReminderIdentity().then(({ avatar, name }) => {
+  ridName.value = name === '桌宠' ? '' : name; // 默认名留空，显示 placeholder
+  ridPreview.textContent = name;
+  renderRidAvatar(avatar);
+});
+ridName.addEventListener('change', () => {
+  const n = ridName.value.trim();
+  window.panelAPI.setReminderName(n);
+  ridPreview.textContent = n || '桌宠';
+  flashRid('名称已保存');
+});
+document.getElementById('rid-pick').addEventListener('click', async () => {
+  const p = await window.panelAPI.pickReminderAvatar();
+  renderRidAvatar(p);
+  if (p) flashRid('头像已更新');
+});
+document.getElementById('rid-clear').addEventListener('click', async () => {
+  renderRidAvatar(await window.panelAPI.clearReminderAvatar());
+  flashRid('已恢复跟随当前形象');
+});
 
 window.panelAPI.getReminders().then(renderReminders);
 window.panelAPI.onRemindersChanged(renderReminders); // 到点触发后（单次变停用、重复推进到下次）同步列表

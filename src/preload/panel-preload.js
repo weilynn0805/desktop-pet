@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld('panelAPI', {
   updateReminder: (id, data) => ipcRenderer.invoke('reminders:update', { id, data }),
   removeReminder: (id) => ipcRenderer.invoke('reminders:remove', id),
   onRemindersChanged: (cb) => ipcRenderer.on('panel:remindersChanged', (_e, list) => cb(list)), // 到点触发后刷新
+  pickSound: () => ipcRenderer.invoke('sound:pick'), // 选择自定义提示音 → {path,name}|null
+  // 提醒形象：头像 + 名称（上传头像后固定用它，否则跟随当前素材）
+  getReminderIdentity: () => ipcRenderer.invoke('reminderidentity:get'),
+  setReminderName: (name) => ipcRenderer.send('reminderidentity:setName', name),
+  pickReminderAvatar: () => ipcRenderer.invoke('reminderavatar:pick'),
+  clearReminderAvatar: () => ipcRenderer.invoke('reminderavatar:clear'),
   // 开机自启：读取 + 设置
   getAutoLaunch: () => ipcRenderer.invoke('autolaunch:get'),
   setAutoLaunch: (on) => ipcRenderer.send('autolaunch:set', on),

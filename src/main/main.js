@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const store = require('./store');
 const assets = require('./services/assets');
+const sounds = require('./services/sounds');
 
 const PET_SIZE = 200; // 宠物在缩放=1 时的边长
 const MIN_SCALE = 0.5, MAX_SCALE = 2.5; // 缩放范围
@@ -396,15 +397,32 @@ function getReminders() {
   const r = store.read().reminders;
   return Array.isArray(r) ? r : [];
 }
-// 清洗一条提醒：文案≤50、时间字符串、重复枚举、启用布尔
+const SOUNDS = ['none', 'ding', 'dingdong', 'chime', 'custom'];
+// 清洗一条提醒：文案≤50、时间字符串、重复枚举、启用布尔、提示音
 function sanitizeReminder(d) {
+  const sound = SOUNDS.includes(d && d.sound) ? d.sound : 'ding'; // 默认“叮”
   return {
     text: String((d && d.text) || '').trim().slice(0, 50),
     datetime: String((d && d.datetime) || ''), // 'YYYY-MM-DDTHH:mm'（datetime-local）
     repeat: REPEATS.includes(d && d.repeat) ? d.repeat : 'single',
     enabled: d && d.enabled !== false, // 默认启用
+    sound,
+    soundSrc: sound === 'custom' ? String((d && d.soundSrc) || '') : '', // 仅自定义存路径
   };
 }
+// 选择自定义提示音文件 → 复制进 userData/sounds → 返回 {path, name} 或 null
+ipcMain.handle('sound:pick', () => {
+  const owner = settingsWin && !settingsWin.isDestroyed() ? settingsWin : petWin;
+  const res = dialog.showOpenDialogSync(owner, {
+    title: '选择提示音（音频文件）',
+    properties: ['openFile'],
+    filters: [
+      { name: '音频', extensions: sounds.PICK_EXTENSIONS },
+      { name: '所有文件', extensions: ['*'] },
+    ],
+  });
+  return res && res.length ? sounds.importSound(res[0]) : null;
+});
 function saveReminders(list) {
   store.write({ reminders: list });
   return list;
@@ -480,10 +498,50 @@ function positionReminder() {
   reminderWin.setPosition(Math.round(x), Math.round(y));
 }
 
-// 把宠物当前形象推给弹窗（让宠物“出现在”提醒里）
+// ---- 提醒形象（头像 + 名称）：上传后固定用该头像，否则跟随当前素材 ----
+function getReminderName() {
+  const n = String(store.read().reminderName || '').trim();
+  return n || '桌宠';
+}
+function getReminderAvatar() {
+  const p = store.read().reminderAvatar;
+  return p && fs.existsSync(p) ? p : null; // 文件丢失则视为未设置
+}
+ipcMain.handle('reminderidentity:get', () => ({ avatar: getReminderAvatar(), name: getReminderName() }));
+ipcMain.on('reminderidentity:setName', (_e, name) => {
+  store.write({ reminderName: String(name || '').trim().slice(0, 12) || null });
+});
+ipcMain.handle('reminderavatar:pick', () => {
+  const owner = settingsWin && !settingsWin.isDestroyed() ? settingsWin : petWin;
+  const res = dialog.showOpenDialogSync(owner, {
+    title: '选择提醒头像（图片）',
+    properties: ['openFile'],
+    filters: [
+      { name: '图片', extensions: ['png', 'apng', 'gif', 'webp', 'jpg', 'jpeg'] },
+      { name: '所有文件', extensions: ['*'] },
+    ],
+  });
+  if (!res || !res.length) return getReminderAvatar();
+  const imported = assets.importAsset(res[0]); // 复制进 userData/assets，返回 {path,type}
+  if (!imported || imported.type !== 'image') return getReminderAvatar(); // 仅接受图片
+  const old = store.read().reminderAvatar;
+  store.write({ reminderAvatar: imported.path });
+  if (old && old !== imported.path) { try { fs.unlinkSync(old); } catch {} } // 删旧头像
+  return getReminderAvatar();
+});
+ipcMain.handle('reminderavatar:clear', () => {
+  const old = store.read().reminderAvatar;
+  store.write({ reminderAvatar: null });
+  if (old) { try { fs.unlinkSync(old); } catch {} }
+  return null; // 恢复“跟随当前形象”
+});
+
+// 把头像 + 名称推给弹窗：有自定义头像用它，否则用宠物当前形象
 function sendReminderPet() {
   if (reminderWin && !reminderWin.isDestroyed()) {
-    reminderWin.webContents.send('reminder:pet', getCurrentAsset());
+    const custom = getReminderAvatar();
+    const asset = custom ? { path: custom, type: 'image' } : getCurrentAsset();
+    reminderWin.webContents.send('reminder:pet', { asset, name: getReminderName() });
   }
 }
 
@@ -501,6 +559,7 @@ function createReminderWindow() {
       preload: path.join(__dirname, '../preload/reminder-preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required', // 到点无用户手势也能播提示音
     },
   });
   reminderWin.setAlwaysOnTop(true, 'screen-saver');
@@ -509,7 +568,14 @@ function createReminderWindow() {
   reminderWin.on('closed', () => { reminderWin = null; });
 }
 
-// 触发一组提醒：合入待确认列表 → 弹窗（已开则追加）
+// 播放刚触发这批提醒各自的提示音
+function playFiredSounds(items) {
+  if (reminderWin && !reminderWin.isDestroyed()) {
+    reminderWin.webContents.send('reminder:play', items.map((i) => ({ sound: i.sound, soundSrc: i.soundSrc })));
+  }
+}
+
+// 触发一组提醒：合入待确认列表 → 弹窗（已开则追加）→ 播提示音
 function pushReminderPopup(items) {
   if (!items || !items.length) return;
   pendingReminders.push(...items);
@@ -520,12 +586,14 @@ function pushReminderPopup(items) {
       reminderWin.webContents.send('reminder:list', pendingReminders);
       positionReminder();
       reminderWin.show();
+      playFiredSounds(items);
     });
   } else {
     sendReminderPet();
     reminderWin.webContents.send('reminder:list', pendingReminders);
     positionReminder();
     reminderWin.show();
+    playFiredSounds(items);
   }
 }
 
@@ -558,7 +626,7 @@ function checkReminders() {
     const d = parseLocal(r.datetime);
     if (!d || d.getTime() > now) continue;
     if (pendingReminders.some((p) => p.id === r.id)) continue; // 已在弹窗里
-    toFire.push({ id: r.id, text: r.text, datetime: r.datetime, repeat: r.repeat });
+    toFire.push({ id: r.id, text: r.text, datetime: r.datetime, repeat: r.repeat, sound: r.sound, soundSrc: r.soundSrc });
     if (r.repeat === 'single') r.enabled = false;
     else r.datetime = toLocalString(nextOccurrence(d, r.repeat));
     changed = true;

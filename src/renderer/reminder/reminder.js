@@ -16,7 +16,11 @@ function renderAvatar(asset) {
   if (asset.type === 'video') { el.muted = el.loop = el.autoplay = true; el.playsInline = true; }
   avatarEl.appendChild(el);
 }
-window.reminderAPI.onPet(renderAvatar);
+window.reminderAPI.onPet(({ asset, name }) => {
+  petName = name || '桌宠';
+  headTextEl.textContent = `${petName}提醒你`; // 名称即时生效（列表渲染时会再带上条数）
+  renderAvatar(asset);
+});
 
 // 'YYYY-MM-DDTHH:mm' → 易读展示（今天只显示时分，跨天显示日期）
 function fmt(dt) {
@@ -27,8 +31,10 @@ function fmt(dt) {
   return d === todayStr ? (t || '') : `${(d || '').replace(/-/g, '/')} ${t || ''}`.trim();
 }
 
+let petName = '桌宠'; // 提醒名称（可在面板自定义）
+
 function render(items) {
-  headTextEl.textContent = items.length > 1 ? `桌宠提醒你（${items.length} 条）` : '桌宠提醒你';
+  headTextEl.textContent = items.length > 1 ? `${petName}提醒你（${items.length} 条）` : `${petName}提醒你`;
   listEl.innerHTML = '';
   items.forEach((r) => {
     const item = document.createElement('div');
@@ -63,3 +69,7 @@ function render(items) {
 }
 
 window.reminderAPI.onList(render);
+// 到点：播放这批提醒各自的提示音
+window.reminderAPI.onPlay((items) => {
+  (items || []).forEach((i) => window.playReminderSound(i.sound, i.soundSrc));
+});

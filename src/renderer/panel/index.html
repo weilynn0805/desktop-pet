@@ -74,6 +74,25 @@
     <section class="card">
       <h2>事项提醒</h2>
       <p class="muted">到设定时间会弹出提醒面板（白底黑字、可堆叠、不点「我知道了」不消失）。</p>
+
+      <h3 class="subhead">提醒形象</h3>
+      <div class="rem-identity">
+        <div class="thumb empty" id="rid-avatar"></div>
+        <div class="rid-main">
+          <div class="field" style="margin-top:0;">
+            <label class="muted">名称</label>
+            <input type="text" id="rid-name" class="input" maxlength="12" placeholder="桌宠" />
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <button id="rid-pick" class="btn btn-ghost">上传头像…</button>
+            <button id="rid-clear" class="btn btn-ghost">跟随当前形象</button>
+            <span id="rid-status" class="muted"></span>
+          </div>
+        </div>
+      </div>
+      <p class="muted">上传后提醒面板固定用该头像；头部显示为「<b id="rid-preview">桌宠</b>提醒你」。</p>
+
+      <hr class="sep" />
       <div id="reminder-list" class="reminder-list"></div>
 
       <hr class="sep" />
@@ -94,6 +113,22 @@
           <option value="weekly">每周</option>
           <option value="workday">工作日</option>
         </select>
+      </div>
+      <div class="field">
+        <label class="muted">提示音</label>
+        <select id="rem-sound" class="input">
+          <option value="none">无</option>
+          <option value="ding">叮</option>
+          <option value="dingdong">叮咚</option>
+          <option value="chime">三连音</option>
+          <option value="custom">自定义…</option>
+        </select>
+        <button id="rem-test" class="btn btn-ghost" type="button">试听</button>
+      </div>
+      <div class="field" id="rem-sound-custom" style="display:none;">
+        <label class="muted"></label>
+        <button id="rem-pick-sound" class="btn btn-ghost" type="button">选择音频…</button>
+        <span id="rem-sound-name" class="muted" style="flex:1;min-width:0;word-break:break-all;">未选择</span>
       </div>
       <div class="row">
         <button id="rem-save" class="btn">保存提醒</button>
@@ -157,6 +192,7 @@
     </section>
   </main>
 
+  <script src="../shared/sound.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>
