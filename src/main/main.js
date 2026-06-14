@@ -618,6 +618,7 @@ ipcMain.on('reminder:ack', (_e, id) => {
 
 // 检查到点提醒：触发后单次停用、重复推进到下次；写库并通知面板刷新
 function checkReminders() {
+  if (getPaused()) return; // 暂停宠物 → 提醒一并暂停，不到点触发；恢复后下一拍补触发。§3.3 规则5
   const now = Date.now();
   const list = getReminders();
   const toFire = [];
@@ -794,6 +795,7 @@ function sendFatigueStatus() {
     settingsWin.webContents.send('panel:fatigueStatus', {
       usage: Math.round(fatigueUseSeconds),
       idle: Math.round(powerMonitor.getSystemIdleTime()),
+      paused: getPaused(),
       cfg: getFatigueCfg(),
     });
   }
@@ -804,6 +806,7 @@ function fatigueTick() {
   fatigueLastTick = now;
   const cfg = getFatigueCfg();
   if (!cfg.enabled) { fatigueUseSeconds = 0; sendFatigueStatus(); return; }
+  if (getPaused()) { sendFatigueStatus(); return; } // 暂停宠物 → 计时一并冻结(不清零、不触发)；§3.3 规则5
   if (restActive) { sendFatigueStatus(); return; } // 休息弹窗显示中：暂停计时
   const idle = powerMonitor.getSystemIdleTime(); // 秒
   if (idle >= cfg.idle * 60) fatigueUseSeconds = 0; // 长时间空闲 → 视为已休息，清零
@@ -820,6 +823,7 @@ function startFatigueTimer() {
 ipcMain.handle('fatigue:get', () => ({
   usage: Math.round(fatigueUseSeconds),
   idle: Math.round(powerMonitor.getSystemIdleTime()),
+  paused: getPaused(),
   cfg: getFatigueCfg(),
 }));
 // 保存防沉迷配置（开关 + 三个分钟数；下一拍读 store 即时生效）→ 回传清洗后的值

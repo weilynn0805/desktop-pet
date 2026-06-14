@@ -447,6 +447,11 @@ function fmtDur(sec) {
 function renderFatigue(st) {
   if (!st || !st.cfg) return;
   if (!st.cfg.enabled) { fatigueStatusEl.textContent = '防沉迷计时：已关闭'; return; }
+  if (st.paused) {
+    fatigueStatusEl.textContent =
+      `已暂停宠物：计时与提醒一并冻结（当前累计 ${fmtDur(st.usage)}）`;
+    return;
+  }
   fatigueStatusEl.textContent =
     `已连续使用 ${fmtDur(st.usage)} · 当前空闲 ${st.idle} 秒（空闲满 ${st.cfg.idle} 分钟自动清零；满 ${st.cfg.use} 分钟将提醒休息）`;
 }
