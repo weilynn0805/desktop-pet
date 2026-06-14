@@ -26,6 +26,7 @@ pet.addEventListener('pointermove', (e) => {
   if (!moved && Math.hypot(dx, dy) > THRESHOLD) {
     moved = true;
     document.body.classList.add('dragging');
+    hideBubble(); // 开始拖动 → 收起气泡，避免遮挡
   }
   if (moved) {
     window.petAPI.move(winX + dx, winY + dy); // 用初始位置+总位移，避免累积漂移
@@ -127,11 +128,70 @@ function overPet(cx, cy) {
   return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
 }
 
+// ---- 悬停气泡文案 ----
+const bubble = document.getElementById('bubble');
+const PHRASES = [
+  '你好呀～',
+  '今天也要加油哦！',
+  '记得起来喝口水 💧',
+  '摸摸我吧～',
+  '在忙什么呢？',
+  '休息一下眼睛吧 👀',
+  '我一直在这儿陪你 ✨',
+];
+// 扫描图片最顶端不透明像素，返回其占图高的比例（0=顶,1=底）。按 src 缓存。
+let opaqueTopCache = { src: null, ratio: 0 };
+function imageOpaqueTopRatio(img) {
+  if (opaqueTopCache.src === img.src) return opaqueTopCache.ratio;
+  let ratio = 0;
+  try {
+    const SW = Math.min(img.naturalWidth, 100);           // 缩小扫描以提速
+    const SH = Math.max(1, Math.round(img.naturalHeight * (SW / img.naturalWidth)));
+    const c = document.createElement('canvas');
+    c.width = SW; c.height = SH;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, SW, SH);
+    const data = cx.getImageData(0, 0, SW, SH).data;
+    scan: for (let y = 0; y < SH; y++) {
+      for (let x = 0; x < SW; x++) {
+        if (data[(y * SW + x) * 4 + 3] > 16) { ratio = y / SH; break scan; }
+      }
+    }
+  } catch { ratio = 0; }
+  opaqueTopCache = { src: img.src, ratio };
+  return ratio;
+}
+
+// 让气泡底边贴在宠物“可见头顶”上方固定间距处（含缩放与图片透明留白）
+function positionBubble() {
+  const img = pet.querySelector('img.media');
+  const el = pet.querySelector('.media') || defaultBody;
+  const r = el.getBoundingClientRect();
+  const GAP = 20; // 气泡底边离宠物头顶的间距(px)，缩放时保持不变
+  let topY = r.top; // 默认：用元素外框顶部
+  if (img && img.complete && img.naturalWidth) {
+    // 还原 object-fit:contain 的实际绘制区域，再加上图内主体的不透明顶部偏移
+    const s = Math.min(r.width / img.naturalWidth, r.height / img.naturalHeight);
+    const dh = img.naturalHeight * s;
+    const oy = (r.height - dh) / 2;
+    topY = r.top + oy + imageOpaqueTopRatio(img) * dh;
+  }
+  bubble.style.left = (r.left + r.width / 2) + 'px';
+  bubble.style.bottom = (window.innerHeight - topY + GAP) + 'px';
+}
+function showBubble() {
+  bubble.textContent = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+  positionBubble(); // 先按当前大小定位，再淡入
+  bubble.classList.add('show');
+}
+function hideBubble() { bubble.classList.remove('show'); }
+
 let interactive = false;
 function setInteractive(on) {
   if (on === interactive) return; // 状态没变就不打扰主进程
   interactive = on;
   window.petAPI.setInteractive(on);
+  if (on) showBubble(); else hideBubble(); // 进入宠物→说句话，离开→收起
 }
 
 window.addEventListener('mousemove', (e) => {
@@ -152,6 +212,7 @@ window.petAPI.getScale().then(applyScale); // 启动时还原上次大小
 window.addEventListener('wheel', (e) => {
   if (!interactive) return;
   e.preventDefault();                              // 阻止页面本身滚动
+  hideBubble();                                    // 缩放时收起气泡
   applyScale(e.deltaY < 0 ? scale * 1.1 : scale / 1.1);
   window.petAPI.setScale(scale);                   // 持久化
 }, { passive: false });

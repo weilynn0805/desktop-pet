@@ -24,6 +24,38 @@ body.dragging { cursor: grabbing; }
   transition: transform .08s ease-out; /* 滚轮缩放更顺滑 */
 }
 
+/* 悬停气泡：固定在窗口上方居中，浮在宠物头顶上方 */
+.bubble {
+  position: absolute;
+  left: 50%;                     /* 默认值；显示时由 JS 按宠物实际位置覆盖 */
+  bottom: 360px;
+  transform: translateX(-50%) translateY(6px);
+  max-width: 200px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, .97);
+  color: #3a3a3a;
+  font: 13px/1.4 "Microsoft YaHei", system-ui, sans-serif;
+  text-align: center;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .18);
+  pointer-events: none;          /* 不拦截鼠标，不影响穿透 */
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+}
+.bubble.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* 气泡下方小三角 */
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom: 0;
+  border-top-color: rgba(255, 255, 255, .97);
+}
+
 .body {
   position: relative;
   width: 120px;
