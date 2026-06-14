@@ -353,6 +353,24 @@ function addAssets(parentWin) {
     if (choice === 1) return getAssets(); // 取消整批
   }
 
+  // 规格提示（≤50MB / ≤1080p）：仅提示不拦截，整批列一次
+  const limitLines = [];
+  for (const f of valid) {
+    const w = assets.overLimitWarnings(f);
+    if (w.length) limitLines.push(`【${path.basename(f)}】`, ...w.map((s) => '· ' + s));
+  }
+  if (limitLines.length) {
+    const choice = dialog.showMessageBoxSync(owner, {
+      type: 'warning',
+      buttons: ['仍然添加', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      message: '部分素材超过建议规格（不影响添加，仅提示）',
+      detail: limitLines.join('\n') + '\n\n超规格素材可能增加内存/CPU 占用，建议压缩后再用。仍可继续添加。',
+    });
+    if (choice === 1) return getAssets(); // 取消整批
+  }
+
   const list = getAssets();
   for (const f of valid) {
     const a = assets.importAsset(f);
@@ -360,6 +378,21 @@ function addAssets(parentWin) {
   }
   saveAssets(list);
   return list;
+}
+
+// 单文件规格提示（提醒头像 / 防沉迷素材共用）：超限弹非阻塞确认；返回 true=继续使用
+function confirmAssetSpec(owner, filePath) {
+  const lines = assets.overLimitWarnings(filePath);
+  if (!lines.length) return true;
+  const choice = dialog.showMessageBoxSync(owner, {
+    type: 'warning',
+    buttons: ['仍然使用', '取消'],
+    defaultId: 0,
+    cancelId: 1,
+    message: '该素材超过建议规格（不影响使用，仅提示）',
+    detail: lines.map((s) => '· ' + s).join('\n') + '\n\n超规格素材可能增加内存/CPU 占用，建议压缩后再用。',
+  });
+  return choice === 0;
 }
 
 // 删除第 index 个素材：从磁盘删文件 + 从列表移除 → 返回新列表
@@ -524,6 +557,7 @@ ipcMain.handle('reminderavatar:pick', () => {
     ],
   });
   if (!res || !res.length) return getReminderAvatar();
+  if (!confirmAssetSpec(owner, res[0])) return getReminderAvatar(); // 规格超限 → 用户取消
   const imported = assets.importAsset(res[0]); // 复制进 userData/assets，返回 {path,type}
   if (!imported || imported.type !== 'image') return getReminderAvatar(); // 仅接受图片
   const old = store.read().reminderAvatar;
@@ -729,6 +763,7 @@ ipcMain.handle('fatigueasset:pick', () => {
     ],
   });
   if (!res || !res.length) return getFatigueAsset();
+  if (!confirmAssetSpec(owner, res[0])) return getFatigueAsset(); // 规格超限 → 用户取消
   const imported = assets.importAsset(res[0]); // 复制进 userData/assets，返回 {path,type}
   if (!imported) return getFatigueAsset();
   const old = store.read().fatigueAsset;
