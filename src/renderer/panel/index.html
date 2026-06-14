@@ -156,10 +156,13 @@
       </div>
     </section>
 
-    <!-- 防沉迷（骨架，v1.1 填充）-->
-    <section class="card card-soon">
-      <h2>防沉迷提醒 <span class="badge">v1.1 开发中</span></h2>
+    <!-- 防沉迷 -->
+    <section class="card">
+      <h2>防沉迷提醒</h2>
       <p class="muted">连续使用电脑过久时，全屏温和提醒休息。善意提醒，可随时关闭，不强制锁屏。</p>
+      <label class="check" style="margin-top:10px;">
+        <input type="checkbox" id="fatigue-enabled" /> 启用防沉迷提醒
+      </label>
       <p class="muted" id="fatigue-status">连续使用计时：加载中…</p>
 
       <hr class="sep" />
@@ -179,20 +182,24 @@
       <hr class="sep" />
       <div class="row">
         <span class="muted">连续使用</span>
-        <input type="number" class="num" value="90" disabled />
+        <input type="number" id="fatigue-use" class="num" min="1" max="600" step="1" />
         <span class="muted">分钟后提醒</span>
       </div>
       <div class="row">
         <span class="muted">空闲</span>
-        <input type="number" class="num" value="10" disabled />
+        <input type="number" id="fatigue-idle" class="num" min="1" max="120" step="1" />
         <span class="muted">分钟重置计时</span>
       </div>
       <div class="row">
         <span class="muted">休息</span>
-        <input type="number" class="num" value="5" disabled />
+        <input type="number" id="fatigue-rest" class="num" min="1" max="120" step="1" />
         <span class="muted">分钟后自动结束</span>
       </div>
-      <p class="muted">以上为默认值（PRD 决策 E），v1.1 上线后可在此调整 + 上传全屏休息素材。</p>
+      <div class="row">
+        <button id="fatigue-save" class="btn">保存</button>
+        <span id="fatigue-save-status" class="muted"></span>
+      </div>
+      <p class="muted">默认 90 / 10 / 5（PRD 决策 E）。改完点保存即时生效。</p>
     </section>
 
     <!-- 行为 -->

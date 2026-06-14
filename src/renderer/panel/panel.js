@@ -450,8 +450,39 @@ function renderFatigue(st) {
   fatigueStatusEl.textContent =
     `已连续使用 ${fmtDur(st.usage)} · 当前空闲 ${st.idle} 秒（空闲满 ${st.cfg.idle} 分钟自动清零；满 ${st.cfg.use} 分钟将提醒休息）`;
 }
-window.panelAPI.getFatigue().then(renderFatigue);     // 首屏立即拿一次
-window.panelAPI.onFatigueStatus(renderFatigue);       // 之后每 5 秒推送刷新
+// 配置输入框（仅在加载/保存时回填，避免每 5 秒推送覆盖正在编辑的值）
+const fatigueEnabledEl = document.getElementById('fatigue-enabled');
+const fatigueUseEl = document.getElementById('fatigue-use');
+const fatigueIdleEl = document.getElementById('fatigue-idle');
+const fatigueRestEl = document.getElementById('fatigue-rest');
+const fatigueSaveEl = document.getElementById('fatigue-save');
+const fatigueSaveStatus = document.getElementById('fatigue-save-status');
+function fillFatigueInputs(cfg) {
+  if (!cfg) return;
+  fatigueEnabledEl.checked = cfg.enabled;
+  fatigueUseEl.value = cfg.use;
+  fatigueIdleEl.value = cfg.idle;
+  fatigueRestEl.value = cfg.rest;
+}
+async function saveFatigue() {
+  const saved = await window.panelAPI.setFatigue({
+    enabled: fatigueEnabledEl.checked,
+    use: Number(fatigueUseEl.value),
+    idle: Number(fatigueIdleEl.value),
+    rest: Number(fatigueRestEl.value),
+  });
+  fillFatigueInputs(saved); // 回填清洗后的值（越界会被夹回）
+  fatigueSaveStatus.textContent = '已保存';
+  setTimeout(() => { fatigueSaveStatus.textContent = ''; }, 2000);
+}
+fatigueSaveEl.addEventListener('click', saveFatigue);
+fatigueEnabledEl.addEventListener('change', saveFatigue); // 总开关：勾选即时保存
+
+window.panelAPI.getFatigue().then((st) => {     // 首屏：渲染读数 + 回填配置
+  renderFatigue(st);
+  if (st) fillFatigueInputs(st.cfg);
+});
+window.panelAPI.onFatigueStatus(renderFatigue); // 之后每 5 秒推送只刷新读数文字
 
 // 防沉迷全屏素材：上传 / 清除（专属，独立于提醒头像）
 const faThumb = document.getElementById('fa-thumb');

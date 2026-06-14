@@ -822,5 +822,20 @@ ipcMain.handle('fatigue:get', () => ({
   idle: Math.round(powerMonitor.getSystemIdleTime()),
   cfg: getFatigueCfg(),
 }));
+// 保存防沉迷配置（开关 + 三个分钟数；下一拍读 store 即时生效）→ 回传清洗后的值
+ipcMain.handle('fatigue:set', (_e, cfg) => {
+  const clampInt = (v, def, lo, hi) => {
+    let n = Math.round(Number(v));
+    if (!Number.isFinite(n)) n = def;
+    return Math.min(hi, Math.max(lo, n));
+  };
+  store.write({
+    fatigueEnabled: !!(cfg && cfg.enabled),
+    fatigueUseMinutes: clampInt(cfg && cfg.use, 90, 1, 600),
+    fatigueIdleMinutes: clampInt(cfg && cfg.idle, 10, 1, 120),
+    fatigueRestMinutes: clampInt(cfg && cfg.rest, 5, 1, 120),
+  });
+  return getFatigueCfg();
+});
 
 app.on('window-all-closed', () => app.quit());
