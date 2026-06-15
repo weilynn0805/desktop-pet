@@ -1,41 +1,55 @@
 // 宠物窗交互：手势状态机（区分单击 / 拖动）+ 右键菜单
 const pet = document.getElementById('pet');
-const THRESHOLD = 5; // 移动阈值(px)：位移超过才算拖动，否则算单击
+const THRESHOLD = 5;      // 起拖阈值(px)：位移超过才算拖动，否则算单击
+const DRAG_DEADZONE = 4;  // 拖动中抖动死区(px)：与上次落点偏移小于此值不更新，按住不动不漂移
 
 let dragging = false;  // 左键是否按下
 let moved = false;     // 本次按下是否已超过阈值
+let posReady = false;  // 窗口基准位置是否已就绪（异步取，未就绪前禁止移动，防跳位）
 let startX = 0, startY = 0;   // 按下时的屏幕坐标
 let winX = 0, winY = 0;       // 按下时的窗口左上角坐标
+let appliedX = 0, appliedY = 0; // 最近一次实际落位（用于拖动中抖动死区判断）
 
 pet.addEventListener('pointerdown', async (e) => {
   if (e.button !== 0) return;        // 仅左键参与拖动/单击
   dragging = true;
   moved = false;
+  posReady = false;                  // 基准位置就绪前不移动
   startX = e.screenX;
   startY = e.screenY;
-  const pos = await window.petAPI.getPosition();
+  pet.setPointerCapture(e.pointerId); // 立即捕获：指针移出窗口仍持续收到事件，拖动不丢
+  const pos = await window.petAPI.getPosition(); // 异步取窗口位置
+  if (!dragging) return;             // 取位置期间已松手 → 作废，别再置就绪
   winX = pos.x;
   winY = pos.y;
-  pet.setPointerCapture(e.pointerId); // 关键：指针移出窗口仍持续收到事件，拖动不丢
+  posReady = true;                   // 基准就绪，此后才允许按位移移动
 });
 
 pet.addEventListener('pointermove', (e) => {
-  if (!dragging) return;
+  if (!dragging || !posReady) return; // 基准未就绪前一律不动，避免用到旧/零基准跳到屏幕角落
   const dx = e.screenX - startX;
   const dy = e.screenY - startY;
-  if (!moved && Math.hypot(dx, dy) > THRESHOLD) {
+  if (!moved) {
+    if (Math.hypot(dx, dy) <= THRESHOLD) return; // 还没越过起拖阈值 → 当作未拖动
     moved = true;
     document.body.classList.add('dragging');
     hideBubble(); // 开始拖动 → 收起气泡，避免遮挡
+    appliedX = winX + dx;
+    appliedY = winY + dy;
+    window.petAPI.move(appliedX, appliedY); // 首次越阈：落到当前位置
+    return;
   }
-  if (moved) {
-    window.petAPI.move(winX + dx, winY + dy); // 用初始位置+总位移，避免累积漂移
-  }
+  const nx = winX + dx, ny = winY + dy;
+  if (Math.hypot(nx - appliedX, ny - appliedY) < DRAG_DEADZONE) return; // 死区内：按住微抖不漂移
+  appliedX = nx;
+  appliedY = ny;
+  window.petAPI.move(nx, ny); // 用初始位置+总位移，避免累积漂移
 });
 
 pet.addEventListener('pointerup', (e) => {
   if (!dragging) return;
   dragging = false;
+  posReady = false;
   pet.releasePointerCapture(e.pointerId);
   document.body.classList.remove('dragging');
   if (moved) {

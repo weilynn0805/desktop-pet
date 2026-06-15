@@ -102,9 +102,13 @@ ipcMain.handle('pet:getPosition', () => {
   return { x, y };
 });
 
-// 拖动过程中实时移动窗口
-ipcMain.on('pet:move', (_e, { x, y }) => {
-  petWin.setPosition(Math.round(x), Math.round(y));
+// 拖动过程中实时移动窗口。IPC 边界防御：坐标非有限数一律丢弃，绝不让坏数据崩主进程
+ipcMain.on('pet:move', (_e, pos) => {
+  if (!petWin || petWin.isDestroyed()) return;
+  const x = Math.round(Number(pos && pos.x));
+  const y = Math.round(Number(pos && pos.y));
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return; // 非法坐标 → 忽略本帧
+  petWin.setPosition(x, y);
 });
 
 // 拖动结束 → 持久化位置
