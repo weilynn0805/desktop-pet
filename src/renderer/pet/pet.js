@@ -80,8 +80,15 @@ function toFileURL(p) {
   return 'file:///' + encodeURI(p.replace(/\\/g, '/'));
 }
 
+// 切换/清空素材时彻底释放旧视频：先暂停、清空 src 再 load()，促使解码器与缓冲尽快回收，
+// 避免长时间轮播（72h 下数百次切换）解码器/缓冲累积导致内存增长。PRD R7/§9。
 function clearMedia() {
-  pet.querySelectorAll('.media').forEach((n) => n.remove());
+  pet.querySelectorAll('.media').forEach((n) => {
+    if (n.tagName === 'VIDEO') {
+      try { n.pause(); n.removeAttribute('src'); n.load(); } catch {}
+    }
+    n.remove();
+  });
 }
 
 function renderImage(asset) {
