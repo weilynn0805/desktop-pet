@@ -15,11 +15,16 @@
   "build": {
     "appId": "com.desktoppet.app",
     "productName": "桌面宠物",
+    "copyright": "Copyright © 2026 桌面宠物",
     "files": [
       "src/**/*",
       "package.json"
     ],
     "win": {
+      "icon": "build/icon.ico",
+      "signtoolOptions": {
+        "publisherName": "桌面宠物"
+      },
       "target": [
         {
           "target": "nsis",
@@ -33,7 +38,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "桌面宠物"
+      "shortcutName": "桌面宠物",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     }
   }
 }

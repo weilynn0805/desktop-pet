@@ -7,6 +7,11 @@ dist/
 out/
 测试安装包/
 
+# 签名密钥与图标源（不入库：私钥/证书属敏感物，源图体积大）
+build/*.pfx
+build/icon-source.png
+build/icon-source.png.png
+
 # 日志
 *.log
 npm-debug.log*
