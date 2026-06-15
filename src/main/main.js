@@ -5,6 +5,7 @@ const fs = require('fs');
 const store = require('./store');
 const assets = require('./services/assets');
 const sounds = require('./services/sounds');
+const fullscreen = require('./services/fullscreen');
 
 const PET_SIZE = 200; // 宠物在缩放=1 时的边长
 const MIN_SCALE = 0.5, MAX_SCALE = 2.5; // 缩放范围
@@ -92,6 +93,7 @@ app.whenReady().then(() => {
   startReminderScheduler(); // 启动提醒到点检查
   startFatigueTimer();      // 启动防沉迷连续使用计时
   registerPowerEvents();    // 监听锁屏/睡眠/唤醒
+  fullscreen.start();       // 启动独占全屏/演示检测
 });
 
 // 渲染进程在拖动开始时获取窗口当前位置（用于计算位移）
@@ -667,6 +669,7 @@ ipcMain.on('reminder:ack', (_e, id) => {
 function checkReminders() {
   if (getPaused()) return; // 暂停宠物 → 提醒一并暂停，不到点触发；恢复后下一拍补触发。§3.3 规则5
   if (systemAsleep) return; // 锁屏/睡眠 → 提醒暂停，唤醒后补触发。§5.2
+  if (fullscreen.isBusy()) return; // 独占全屏/演示中 → 提醒暂缓，退出全屏后补触发。决策 C/§5.2
   const now = Date.now();
   const list = getReminders();
   const toFire = [];
@@ -856,6 +859,7 @@ function sendFatigueStatus() {
       usage: Math.round(fatigueUseSeconds),
       idle: Math.round(powerMonitor.getSystemIdleTime()),
       paused: getPaused(),
+      busy: fullscreen.isBusy(),
       cfg: getFatigueCfg(),
     });
   }
@@ -872,7 +876,8 @@ function fatigueTick() {
   const idle = powerMonitor.getSystemIdleTime(); // 秒
   if (idle >= cfg.idle * 60) fatigueUseSeconds = 0; // 长时间空闲 → 视为已休息，清零
   else fatigueUseSeconds += elapsed;
-  if (fatigueUseSeconds >= cfg.use * 60) showRest(Math.round(fatigueUseSeconds / 60)); // 到点弹休息提醒
+  // 到点弹休息提醒；独占全屏/演示中则暂缓（计时不重置，退出全屏后下一拍再弹）。决策 C/§5.2
+  if (fatigueUseSeconds >= cfg.use * 60 && !fullscreen.isBusy()) showRest(Math.round(fatigueUseSeconds / 60));
   sendFatigueStatus();
 }
 function startFatigueTimer() {
@@ -909,6 +914,7 @@ ipcMain.handle('fatigue:get', () => ({
   usage: Math.round(fatigueUseSeconds),
   idle: Math.round(powerMonitor.getSystemIdleTime()),
   paused: getPaused(),
+  busy: fullscreen.isBusy(),
   cfg: getFatigueCfg(),
 }));
 // 保存防沉迷配置（开关 + 三个分钟数；下一拍读 store 即时生效）→ 回传清洗后的值
@@ -927,4 +933,5 @@ ipcMain.handle('fatigue:set', (_e, cfg) => {
   return getFatigueCfg();
 });
 
+app.on('before-quit', () => fullscreen.stop()); // 退出前关掉检测子进程
 app.on('window-all-closed', () => app.quit());

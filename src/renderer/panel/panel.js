@@ -452,8 +452,9 @@ function renderFatigue(st) {
       `已暂停宠物：计时与提醒一并冻结（当前累计 ${fmtDur(st.usage)}）`;
     return;
   }
+  const busyTag = st.busy ? '　⚠ 检测到全屏/独占应用，提醒与休息已暂缓' : '';
   fatigueStatusEl.textContent =
-    `已连续使用 ${fmtDur(st.usage)} · 当前空闲 ${st.idle} 秒（空闲满 ${st.cfg.idle} 分钟自动清零；满 ${st.cfg.use} 分钟将提醒休息）`;
+    `已连续使用 ${fmtDur(st.usage)} · 当前空闲 ${st.idle} 秒（空闲满 ${st.cfg.idle} 分钟自动清零；满 ${st.cfg.use} 分钟将提醒休息）${busyTag}`;
 }
 // 配置输入框（仅在加载/保存时回填，避免每 5 秒推送覆盖正在编辑的值）
 const fatigueEnabledEl = document.getElementById('fatigue-enabled');
