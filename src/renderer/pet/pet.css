@@ -61,23 +61,17 @@ body.paused .pet .media { animation: none !important; }
   border-top-color: rgba(255, 255, 255, .97);
 }
 
+/* 默认形象：透明底熊猫插画（无素材时显示）。drop-shadow 贴合轮廓而非矩形 */
 .body {
   position: relative;
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle at 35% 30%, #ffe08a, #ffb347);
-  border-radius: 50% 50% 48% 48%;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, .25);
+  width: 150px;
+  height: 186px;                 /* 熊猫比例 ≈ 0.8 */
+  background: url("assets/panda-default.png") center / contain no-repeat;
+  filter: drop-shadow(0 5px 7px rgba(0, 0, 0, .22));
   animation: bounce 1.6s ease-in-out infinite;
 }
-
-.eye { position: absolute; top: 46px; width: 16px; height: 16px; background: #222; border-radius: 50%; }
-.eye.left  { left: 34px; }
-.eye.right { right: 34px; }
-
-.cheek { position: absolute; top: 66px; width: 14px; height: 9px; background: rgba(255, 120, 120, .7); border-radius: 50%; }
-.cheek.left  { left: 24px; }
-.cheek.right { right: 24px; }
+/* 原 CSS 团子的眼睛/腮红，换成熊猫图后不再需要 */
+.eye, .cheek { display: none; }
 
 @keyframes bounce {
   0%, 100% { transform: translateY(0) scale(1); }
