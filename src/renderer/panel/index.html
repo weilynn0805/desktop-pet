@@ -4,6 +4,17 @@
   <meta charset="utf-8" />
   <title>桌面宠物 · 设置</title>
   <link rel="stylesheet" href="panel.css" />
+  <script>
+    /* 早应用主题，避免明暗闪烁；仅本面板窗口，存 localStorage，不影响其它功能 */
+    (function () {
+      try {
+        var m = localStorage.getItem('panel-theme') || 'system';
+        var dark = m === 'dark' ||
+          (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <header class="topbar">
@@ -205,6 +216,17 @@
     <!-- 行为 -->
     <section class="card">
       <h2>行为</h2>
+      <div class="row" style="margin-top:6px;">
+        <span class="muted">外观</span>
+        <span class="seg" id="theme-seg">
+          <button type="button" data-mode="system">跟随系统</button>
+          <button type="button" data-mode="light">浅色</button>
+          <button type="button" data-mode="dark">深色</button>
+        </span>
+      </div>
+      <p class="muted">仅影响本设置面板的明暗，不改变桌宠本体。</p>
+
+      <hr class="sep" />
       <label class="check">
         <input type="checkbox" id="auto-launch" /> 开机自动启动
       </label>

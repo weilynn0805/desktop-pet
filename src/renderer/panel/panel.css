@@ -1,67 +1,127 @@
 * { box-sizing: border-box; }
 
+/* ===== 设计 token：熊猫·竹林 主题（浅色 + 跟随系统暗色） ===== */
+:root {
+  --page:      #E9F4D4;  /* 整页清新绿底 */
+  --bar:       #D7EDB4;  /* 顶栏 */
+  --card:      #FFFFFF;  /* 白色软枕卡 */
+  --card2:     #F2F9E2;  /* 卡内浅绿凹槽（输入框/列表项底） */
+  --border:    #E2EFC9;
+  --ink:       #23301A;  /* 标题近黑（大号加粗） */
+  --ink2:      #3C4A2C;  /* 正文 */
+  --muted:     #6E7A5E;  /* 辅助文字（≥4.5:1） */
+  --green:     #4F8C1E;  /* 结构绿（次按钮文字/边/链接） */
+  --green-dk:  #3C6E15;  /* 主按钮深绿字 */
+  --green-bd:  #BFE08A;  /* 次按钮描边 */
+  --pri1:      #E4F4C4;  /* 主按钮渐变浅绿 */
+  --pri2:      #D2EAA0;
+  --lime:      #8BC53F;
+  --soft:      #E8F4CE;  /* 浅绿标签/选中底 */
+  --soft-ink:  #3E6E16;
+  --focus:     #4F8C1E;  /* 焦点环 */
+  --success:   #2F8D4E;
+  --danger:    #C5402F;
+  --danger-h:  #AE3727;
+  --shadow:    0 5px 16px rgba(106,170,40,.18);
+  --shadow-sm: 0 3px 9px rgba(124,180,40,.28);
+}
+
+/* 暗色 token：由 <html data-theme="dark"> 决定（JS 据「跟随系统/浅色/深色」设置）。
+   仅作用于本设置面板窗口，不影响宠物/提醒/防沉迷等其它窗口与功能。 */
+:root[data-theme="dark"] {
+  --page:     #15190E;
+  --bar:      #222C16;
+  --card:     #20251A;
+  --card2:    #27301C;
+  --border:   #36402A;
+  --ink:      #EDF3E2;
+  --ink2:     #CBD6B8;
+  --muted:    #A7B295;
+  --green:    #7FC03A;
+  --green-dk: #BFE886;
+  --green-bd: #3E5A22;
+  --pri1:     #33471C;
+  --pri2:     #2A3B17;
+  --lime:     #9AD24E;
+  --soft:     #2A361C;
+  --soft-ink: #BFE886;
+  --focus:    #8BC53F;
+  --success:  #5FB98A;
+  --danger:   #E5705F;
+  --danger-h: #D2604F;
+  --shadow:   0 5px 16px rgba(0,0,0,.32);
+  --shadow-sm:0 3px 9px rgba(0,0,0,.30);
+}
+
 html, body {
   margin: 0;
   height: 100%;
-  background: #f5f6f8;
-  color: #2b2d31;
-  font: 14px/1.5 "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  background: var(--page);
+  color: var(--ink2);
+  font: 14px/1.6 "Microsoft YaHei", system-ui, -apple-system, sans-serif;
 }
 
+/* 顶栏 */
 .topbar {
-  padding: 14px 18px;
-  background: #fff;
-  border-bottom: 1px solid #e6e8eb;
+  padding: 15px 18px;
+  background: var(--bar);
 }
 .topbar h1 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .3px;
 }
 
 .content {
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 13px;
 }
 
+/* 软枕白卡 */
 .card {
-  background: #fff;
-  border: 1px solid #e6e8eb;
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: var(--card);
+  border: 0;
+  border-radius: 18px;
+  padding: 16px 17px;
+  box-shadow: var(--shadow);
 }
 .card h2 {
-  margin: 0 0 6px;
-  font-size: 14px;
-  font-weight: 600;
+  margin: 0 0 7px;
+  font-size: 17px;          /* 大号加粗深色标题——确保一眼可见 */
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: .3px;
 }
 
 .muted {
   margin: 0;
-  color: #8a8f98;
-  font-size: 13px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 
 /* 骨架卡片（功能未上线，仅占位预览）：虚线边框 + 角标 */
-.card-soon { border-style: dashed; }
-.card-soon h2 { color: #6b6f78; }
+.card-soon { box-shadow: none; border: 1px dashed var(--border); }
+.card-soon h2 { color: var(--muted); }
 .badge {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 8px;
   font-size: 11px;
-  font-weight: 600;
-  color: #7c7fd6;
-  background: #eef0ff;
+  font-weight: 700;
+  color: var(--soft-ink);
+  background: var(--soft);
   border-radius: 10px;
   vertical-align: middle;
 }
 .soon-list {
   margin: 6px 0 12px;
   padding-left: 18px;
-  color: #8a8f98;
+  color: var(--muted);
   font-size: 13px;
 }
 .soon-list li { margin: 3px 0; }
@@ -69,66 +129,78 @@ html, body {
 .textarea {
   width: 100%;
   margin-top: 10px;
-  padding: 8px 10px;
-  border: 1px solid #d6d9dd;
-  border-radius: 8px;
-  font: 13px/1.6 "Microsoft YaHei", system-ui, sans-serif;
-  color: #2b2d31;
+  padding: 9px 11px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: 13px/1.7 "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--ink);
   resize: vertical;
   outline: none;
 }
-.textarea:focus { border-color: #7c84ff; }
+.textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 9px;
+  margin-top: 12px;
+  flex-wrap: wrap;
 }
 
+/* 按钮：胶囊 + 绿字（明暗均清晰） */
 .btn {
-  padding: 6px 16px;
+  padding: 9px 18px;
   border: 0;
-  border-radius: 8px;
-  background: #7c84ff;
-  color: #fff;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--pri1), var(--pri2));
+  color: var(--green-dk);
   font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: filter .15s ease, background .15s ease;
 }
-.btn:hover { background: #6a72f0; }
-.btn:active { background: #5a62e0; }
+.btn:hover { filter: brightness(.96); }
+.btn:active { filter: brightness(.92); }
 
 .sep {
-  margin: 14px 0 10px;
+  margin: 14px 0 11px;
   border: 0;
-  border-top: 1px solid #eceef1;
+  border-top: 1px solid var(--border);
 }
 
 .subhead {
   margin: 0 0 4px;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .check {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink2);
   cursor: pointer;
+  margin-top: 4px;
 }
-.check input { cursor: pointer; }
+.check input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--green); }
 
 .num {
   width: 64px;
-  padding: 5px 8px;
-  border: 1px solid #d6d9dd;
-  border-radius: 8px;
+  padding: 7px 8px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   font: 13px "Microsoft YaHei", system-ui, sans-serif;
+  color: var(--ink);
   text-align: center;
   outline: none;
 }
-.num:focus { border-color: #7c84ff; }
+.num:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 
 /* 表单输入（事项提醒等） */
 .field {
@@ -137,18 +209,18 @@ html, body {
   gap: 10px;
   margin-top: 10px;
 }
-.field > label { flex: 0 0 84px; }
+.field > label { flex: 0 0 84px; color: var(--muted); }
 .input {
   flex: 1;
-  padding: 6px 9px;
-  border: 1px solid #d6d9dd;
-  border-radius: 8px;
+  padding: 8px 11px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   font: 13px "Microsoft YaHei", system-ui, sans-serif;
-  color: #2b2d31;
+  color: var(--ink);
   outline: none;
-  background: #fff;
 }
-.input:focus { border-color: #7c84ff; }
+.input:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 
 /* 提醒形象（头像 + 名称）*/
 .rem-identity {
@@ -170,14 +242,14 @@ html, body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #e6e8eb;
-  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--card2);
+  border-radius: 14px;
 }
 .reminder-item.off { opacity: .55; }
 .rem-info { flex: 1; min-width: 0; }
-.rem-text { font-size: 13px; font-weight: 600; word-break: break-all; }
-.reminder-item .btn { padding: 4px 10px; }
+.rem-text { font-size: 13.5px; font-weight: 700; color: var(--ink); word-break: break-all; }
+.reminder-item .btn { padding: 7px 13px; }
 
 /* 形象与素材 */
 .asset {
@@ -190,29 +262,29 @@ html, body {
   width: 64px;
   height: 64px;
   flex: 0 0 64px;
-  border: 1px solid #d6d9dd;
-  border-radius: 8px;
+  border-radius: 13px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   /* 透明棋盘格，便于看出素材透明区域 */
   background-image:
-    linear-gradient(45deg, #e9ebee 25%, transparent 25%),
-    linear-gradient(-45deg, #e9ebee 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #e9ebee 75%),
-    linear-gradient(-45deg, transparent 75%, #e9ebee 75%);
+    linear-gradient(45deg, #dfe9cd 25%, transparent 25%),
+    linear-gradient(-45deg, #dfe9cd 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #dfe9cd 75%),
+    linear-gradient(-45deg, transparent 75%, #dfe9cd 75%);
   background-size: 12px 12px;
   background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
 .thumb img, .thumb video { max-width: 100%; max-height: 100%; object-fit: contain; }
-.thumb.empty { background: #f0f1f3; }
+.thumb.empty { background: var(--card2); }
 .thumb.empty::after { content: "🐾"; font-size: 24px; filter: grayscale(.2); }
 
 .asset-info { min-width: 0; flex: 1; }
 .asset-name {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
   word-break: break-all;
 }
 
@@ -227,9 +299,9 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
-  border: 1px solid #e6e8eb;
-  border-radius: 8px;
+  padding: 9px;
+  background: var(--card2);
+  border-radius: 14px;
 }
 .asset-row {
   display: flex;
@@ -243,25 +315,52 @@ html, body {
 }
 .cap-input {
   width: 100%;
-  padding: 6px 9px;
-  border: 1px solid #d6d9dd;
-  border-radius: 8px;
+  padding: 8px 11px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
   font: 13px "Microsoft YaHei", system-ui, sans-serif;
-  color: #2b2d31;
+  color: var(--ink);
   outline: none;
 }
-.cap-input:focus { border-color: #7c84ff; }
+.cap-input:focus { outline: 2px solid var(--focus); outline-offset: 1px; border-color: var(--focus); }
 
+/* 次按钮（幽灵）：白底绿字绿描边 */
 .btn-ghost {
-  background: #eef0f3;
-  color: #444;
+  background: var(--card);
+  color: var(--green);
+  border: 1.5px solid var(--green-bd);
+  box-shadow: none;
 }
-.btn-ghost:hover { background: #e3e6ea; }
-.btn-ghost:active { background: #d8dbe0; }
+.btn-ghost:hover { background: var(--soft); filter: none; }
+.btn-ghost:active { background: var(--soft); filter: brightness(.97); }
 
-.btn-danger {
-  background: #f04b4b;
-  color: #fff;
+/* 外观明暗分段控件 */
+.seg {
+  display: inline-flex;
+  background: var(--card2);
+  border-radius: 13px;
+  padding: 3px;
+  gap: 2px;
 }
-.btn-danger:hover { background: #e23d3d; }
-.btn-danger:active { background: #d23333; }
+.seg button {
+  padding: 6px 13px;
+  font: 12.5px "Microsoft YaHei", system-ui, sans-serif;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.seg button.on { background: var(--soft); color: var(--soft-ink); }
+.seg button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* 危险按钮：红底白字 */
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: none;
+}
+.btn-danger:hover { background: var(--danger-h); filter: none; }
+.btn-danger:active { background: var(--danger-h); filter: brightness(.95); }

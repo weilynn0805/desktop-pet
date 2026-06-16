@@ -516,3 +516,23 @@ document.getElementById('fa-clear').addEventListener('click', async () => {
   renderFaThumb(await window.panelAPI.clearFatigueAsset());
   flashFa('已清除');
 });
+
+// ---- 外观：明暗切换（仅本设置面板窗口；偏好存 localStorage，不经 IPC，不影响桌宠本体/提醒/防沉迷）----
+(function () {
+  const seg = document.getElementById('theme-seg');
+  if (!seg) return;
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const buttons = Array.from(seg.querySelectorAll('button[data-mode]'));
+  const getMode = () => localStorage.getItem('panel-theme') || 'system';
+  const resolve = (m) => (m === 'dark' || (m === 'system' && mq.matches)) ? 'dark' : 'light';
+  const apply = (m) => document.documentElement.setAttribute('data-theme', resolve(m));
+  const mark = (m) => buttons.forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+  function setMode(m) {
+    try { localStorage.setItem('panel-theme', m); } catch (e) {}
+    apply(m); mark(m);
+  }
+  buttons.forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  // 系统主题变化：仅当处于「跟随系统」时才跟着变
+  mq.addEventListener('change', () => { if (getMode() === 'system') apply('system'); });
+  mark(getMode()); apply(getMode());
+})();
