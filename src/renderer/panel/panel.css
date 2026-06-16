@@ -24,6 +24,9 @@
   --danger-h:  #AE3727;
   --shadow:    0 5px 16px rgba(106,170,40,.18);
   --shadow-sm: 0 3px 9px rgba(124,180,40,.28);
+  --shadow-hover: 0 8px 22px rgba(106,170,40,.22);
+  /* 爪印 SVG（用于章节标题遮罩） */
+  --paw: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cellipse cx='12' cy='16' rx='5.2' ry='4.2'/%3E%3Ccircle cx='6' cy='10' r='1.9'/%3E%3Ccircle cx='10' cy='6.5' r='1.9'/%3E%3Ccircle cx='14' cy='6.5' r='1.9'/%3E%3Ccircle cx='18' cy='10' r='1.9'/%3E%3C/svg%3E");
 }
 
 /* 暗色 token：由 <html data-theme="dark"> 决定（JS 据「跟随系统/浅色/深色」设置）。
@@ -51,6 +54,7 @@
   --danger-h: #D2604F;
   --shadow:   0 5px 16px rgba(0,0,0,.32);
   --shadow-sm:0 3px 9px rgba(0,0,0,.30);
+  --shadow-hover: 0 8px 22px rgba(0,0,0,.42);
 }
 
 html, body {
@@ -61,17 +65,45 @@ html, body {
   font: 14px/1.6 "Microsoft YaHei", system-ui, -apple-system, sans-serif;
 }
 
-/* 顶栏 */
+/* 顶栏：熊猫伴侣条（头像 + 标题 + 竹子装饰） */
 .topbar {
-  padding: 15px 18px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
   background: var(--bar);
 }
+.topbar .bamboo-deco {
+  position: absolute;
+  right: 14px;
+  top: -6px;
+  height: 84px;
+  opacity: .9;
+  pointer-events: none;
+}
+.pet-avatar {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.topbar-title { min-width: 0; }
 .topbar h1 {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
   color: var(--ink);
   letter-spacing: .3px;
+}
+.topbar-sub {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
 }
 
 .content {
@@ -95,6 +127,19 @@ html, body {
   font-weight: 700;
   color: var(--ink);
   letter-spacing: .3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* 章节爪印（SVG 遮罩，跟随 --green 变色，明暗自适应） */
+.card h2::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  background: var(--green);
+  -webkit-mask: var(--paw) center / contain no-repeat;
+  mask: var(--paw) center / contain no-repeat;
 }
 
 .muted {
@@ -364,3 +409,16 @@ html, body {
 }
 .btn-danger:hover { background: var(--danger-h); filter: none; }
 .btn-danger:active { background: var(--danger-h); filter: brightness(.95); }
+
+/* ===== Tier 2 微动效：平滑明暗过渡 + 按钮按压 + 卡片 hover 阴影。
+   全部包在 no-preference 内——开启「减少动态效果」则自动关闭。 ===== */
+@media (prefers-reduced-motion: no-preference) {
+  body, .topbar, .card, .input, .num, .textarea, .cap-input,
+  .reminder-item, .asset-item, .thumb, .seg, .seg button {
+    transition: background-color .25s ease, color .25s ease,
+                border-color .25s ease, box-shadow .2s ease;
+  }
+  .card:hover { box-shadow: var(--shadow-hover); }
+  .btn { transition: filter .15s ease, background .15s ease, transform .12s ease; }
+  .btn:active { transform: scale(.97); }
+}
