@@ -18,9 +18,43 @@ let settingsWin = null; // 设置面板（单例）
 
 const clampScale = (s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s || 1));
 
+// 单实例锁：开机自启或重复点击只允许存在一个宠物。
+// 抢不到锁 → 说明已有实例在跑 → 本实例直接退出（whenReady 不会再触发），
+// 把第二只宠物扼杀在启动阶段。
+const gotInstanceLock = app.requestSingleInstanceLock();
+if (!gotInstanceLock) {
+  app.quit();
+} else {
+  // 第二个实例被拦下时，唤回已存在的宠物窗
+  app.on('second-instance', () => {
+    if (petWin && !petWin.isDestroyed()) { petWin.show(); petWin.focus(); }
+  });
+}
+
+// 把窗口坐标夹到“宠物本体仍露在某个显示器工作区内”：本体在任一屏露出至少
+// VISIBLE 像素 → 原样保留；否则回退主屏右下角默认位。防止宠物被拖/存到屏外消失。
+function clampToVisible(x, y) {
+  const VISIBLE = 40;
+  const fits = (a) =>
+    x + MARGIN + PET_SIZE - VISIBLE > a.x && x + MARGIN + VISIBLE < a.x + a.width &&
+    y + MARGIN + PET_SIZE - VISIBLE > a.y && y + MARGIN + VISIBLE < a.y + a.height;
+  if (Number.isFinite(x) && Number.isFinite(y) &&
+      screen.getAllDisplays().some((d) => fits(d.workArea))) {
+    return { x: Math.round(x), y: Math.round(y) };
+  }
+  const a = screen.getPrimaryDisplay().workArea;
+  return {
+    x: Math.round(a.x + a.width - MARGIN - PET_SIZE - 40),
+    y: Math.round(a.y + a.height - MARGIN - PET_SIZE - 40),
+  };
+}
+
 function createPetWindow() {
   const saved = store.read();
-  const pos = saved.petPosition;
+  // 记忆位置先过可见性钳制：屏外的旧坐标(如曾被拖到屏幕上方的负值)自动归位到右下角
+  const pos = saved.petPosition
+    ? clampToVisible(saved.petPosition.x, saved.petPosition.y)
+    : null;
   const onTop = saved.petAlwaysOnTop !== false; // 默认置顶
 
   const win = new BrowserWindow({
@@ -108,13 +142,19 @@ ipcMain.on('pet:move', (_e, pos) => {
   const x = Math.round(Number(pos && pos.x));
   const y = Math.round(Number(pos && pos.y));
   if (!Number.isFinite(x) || !Number.isFinite(y)) return; // 非法坐标 → 忽略本帧
-  petWin.setPosition(x, y);
+  // Windows 窗口坐标受 16 位有符号整数限制(±32767)，越界会让原生 setPosition
+  // 抛 "conversion failure" 崩主进程。先夹紧到安全范围，再兜底 try/catch。
+  const clamp = (n) => Math.max(-32000, Math.min(32000, n));
+  try {
+    petWin.setPosition(clamp(x), clamp(y));
+  } catch { /* 单帧坏坐标：丢弃，绝不让其崩主进程 */ }
 });
 
 // 拖动结束 → 持久化位置
 ipcMain.on('pet:savePosition', () => {
+  if (!petWin || petWin.isDestroyed()) return;
   const [x, y] = petWin.getPosition();
-  store.write({ petPosition: { x, y } });
+  store.write({ petPosition: clampToVisible(x, y) }); // 屏外位置不入库，下次启动一定看得见
 });
 
 // 设置面板：返回版本/环境信息
